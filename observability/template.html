@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SENTINEL — Observability</title>
+<style>
+/* Palette: the data-viz reference instance.
+   Decision states use the reserved status slots (good / warning / critical)
+   plus categorical blue for REWRITE, which is a kind of action rather than a
+   severity. good vs critical is the unavoidable red/green CVD pair, so every
+   state is rendered with a distinct glyph AND its full word, and a table view
+   is always available -- colour never carries meaning on its own here. */
+:root{
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --surface-2:#f4f3f0;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --allow:#0ca30c; --rewrite:#2a78d6; --escalate:#fab219; --block:#d03b3b;
+  --up:#d03b3b; --down:#2a78d6; --mid:#f0efec;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#222221;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --allow:#0ca30c; --rewrite:#3987e5; --escalate:#fab219; --block:#d03b3b;
+    --up:#e66767; --down:#3987e5; --mid:#383835;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#222221;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --allow:#0ca30c; --rewrite:#3987e5; --escalate:#fab219; --block:#d03b3b;
+  --up:#e66767; --down:#3987e5; --mid:#383835;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.5 var(--sans);
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:19px;margin:0;letter-spacing:-.01em}
+h2{font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+a{color:var(--rewrite)}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.sub{color:var(--ink-2);font-size:13px;margin-top:3px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select,button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--axis);
+  border-radius:8px;padding:7px 10px;cursor:pointer;max-width:100%}
+select{min-width:min(340px,80vw)}
+button:hover,select:hover{border-color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tile .v{font-size:26px;font-weight:650;letter-spacing:-.02em;line-height:1.15}
+.tile .k{font-size:12px;color:var(--muted);margin-top:2px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;word-break:break-word}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;
+  font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.chip .g{font-family:var(--mono)}
+.ALLOW{color:var(--allow);border-color:var(--allow);background:color-mix(in srgb,var(--allow) 10%,transparent)}
+.REWRITE{color:var(--rewrite);border-color:var(--rewrite);background:color-mix(in srgb,var(--rewrite) 10%,transparent)}
+.ESCALATE{color:#8a6100;border-color:var(--escalate);background:color-mix(in srgb,var(--escalate) 18%,transparent)}
+:root[data-theme="dark"] .ESCALATE,@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .ESCALATE{color:var(--escalate)}}
+.BLOCK{color:var(--block);border-color:var(--block);background:color-mix(in srgb,var(--block) 10%,transparent)}
+.tag{display:inline-block;font-size:11px;font-family:var(--mono);border:1px solid var(--axis);
+  border-radius:6px;padding:1px 6px;color:var(--ink-2);margin:2px 4px 2px 0;white-space:nowrap}
+.tag.warn{border-color:var(--escalate);color:#8a6100}
+:root[data-theme="dark"] .tag.warn{color:var(--escalate)}
+.tag.bad{border-color:var(--block);color:var(--block)}
+.tag.ok{border-color:var(--allow);color:var(--allow)}
+.timeline{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px}
+.step{flex:0 0 auto;min-width:104px;text-align:left;border:1px solid var(--axis);border-radius:10px;
+  background:var(--surface);padding:8px 10px;cursor:pointer}
+.step[aria-current="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.step .n{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.step .t{font-size:12px;font-weight:600;margin:2px 0 5px;word-break:break-all}
+.step .adv{font-size:10px;color:var(--block);font-weight:700;letter-spacing:.04em}
+.meter{margin:10px 0 4px}
+.meter .track{position:relative;height:14px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:4px;overflow:hidden}
+.meter .fill{position:absolute;inset:0 auto 0 0;background:var(--axis);border-radius:0 4px 4px 0}
+.meter .tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);box-shadow:0 0 0 1.5px var(--surface)}
+.meter .tick.tol{background:var(--allow)}
+.meter .tick.blk{background:var(--block)}
+.meter .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+td.num{font-variant-numeric:tabular-nums;text-align:right;font-family:var(--mono)}
+.scroll{overflow-x:auto}
+.wf{display:grid;grid-template-columns:minmax(150px,auto) minmax(140px,1fr) 62px;gap:4px 10px;align-items:center;font-size:12px}
+.wf .code{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.wf .bar{position:relative;height:15px;background:linear-gradient(var(--mid),var(--mid)) no-repeat center/1px 100%}
+.wf .bar i{position:absolute;top:1px;bottom:1px;border-radius:2px;display:block}
+.wf .bar i.up{left:50%;background:var(--up)}
+.wf .bar i.down{right:50%;background:var(--down)}
+.wf .val{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.obs{border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:9px;background:var(--surface-2)}
+.obs.untrusted{border-left:3px solid var(--escalate)}
+.obs.authored{border-left:3px solid var(--block)}
+.excerpt{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:pre-wrap;
+  word-break:break-word;margin-top:6px;max-height:190px;overflow:auto}
+mark{background:color-mix(in srgb,var(--block) 22%,transparent);color:inherit;border-radius:3px;padding:0 2px}
+code{font-family:var(--mono);font-size:12px;background:var(--surface-2);border-radius:4px;padding:1px 5px;word-break:break-all}
+.note{font-size:12px;color:var(--muted)}
+.rule{border-left:3px solid var(--escalate);padding:6px 10px;margin:6px 0;background:var(--surface-2);
+  border-radius:0 8px 8px 0;font-size:12.5px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:8px}
+.verdict{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.big{font-size:17px;font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>SENTINEL — decision trace</h1>
+    <div class="sub" id="runsub">every action, the evidence behind its decision, and what happened next</div>
+  </div>
+  <div class="controls">
+    <select id="runsel" aria-label="Select a recorded run"></select>
+    <button id="tableBtn" aria-pressed="false">Table view</button>
+    <button id="themeBtn">Theme</button>
+  </div>
+</header>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card" id="runmeta"></div>
+<div class="card" id="mandate"></div>
+
+<h2>Timeline</h2>
+<div class="timeline" id="timeline" role="tablist" aria-label="Steps in this run"></div>
+
+<div class="grid2">
+  <div>
+    <div class="card" id="detail"></div>
+  </div>
+  <div>
+    <div class="card" id="provenance"></div>
+  </div>
+</div>
+
+<div class="card" id="tableview" hidden></div>
+<div class="card" id="verdict"></div>
+
+<p class="note">Built from the JSONL the guard wrote while the run executed
+(<span id="src"></span>). Nothing here is re-derived after the fact.</p>
+</div>
+
+<script>
+const RUNS = /*__RUNS__*/[];
+const GLYPH = {ALLOW:"✓", REWRITE:"✎", ESCALATE:"⚑", BLOCK:"✕"};
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => (v*100).toFixed(1)+"%";
+const chip = i => `<span class="chip ${i}"><span class="g" aria-hidden="true">${GLYPH[i]||"·"}</span>${i}</span>`;
+const el = id => document.getElementById(id);
+
+let run = RUNS[0], selected = 0;
+
+/* ---------- run picker ---------- */
+const sel = el("runsel");
+RUNS.forEach((r,i)=>{
+  const o=document.createElement("option");
+  o.value=i; o.textContent=`${r.scenario}  ·  ${r.defense}`;
+  sel.appendChild(o);
+});
+sel.onchange = () => { run = RUNS[sel.value]; selected = firstInteresting(); renderAll(); };
+
+el("themeBtn").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.getAttribute("data-theme") || (dark?"dark":"light");
+  document.documentElement.setAttribute("data-theme", cur==="dark"?"light":"dark");
+};
+el("tableBtn").onclick = e => {
+  const tv = el("tableview"); tv.hidden = !tv.hidden;
+  e.currentTarget.setAttribute("aria-pressed", String(!tv.hidden));
+};
+
+function firstInteresting(){
+  const i = run.steps.findIndex(s => s.decision && s.decision.intervention !== "ALLOW");
+  return i < 0 ? 0 : i;
+}
+
+/* ---------- tiles ---------- */
+function renderTiles(){
+  const v = run.verdict || {};
+  const counts = v.interventions || {};
+  const steps = run.steps.length;
+  const adversarial = run.steps.filter(s=>s.harness_label==="injected").length;
+  const tiles = [
+    [v.overall || "—", "verdict"],
+    [v.security_pass ? "contained" : "BREACHED", "attack outcome"],
+    [v.utility_pass ? "completed" : "not completed", "user task"],
+    [`${counts.ESCALATE||0}`, "human escalations"],
+    [`${adversarial}/${steps}`, "attacker-authored steps"],
+  ];
+  el("tiles").innerHTML = tiles.map(([v,k])=>`<div class="tile"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
+}
+
+/* ---------- run meta ---------- */
+function renderMeta(){
+  const a = run.attack || {};
+  const surfaces = (a.surfaces_written||[]).map(s=>`<code>${esc(s.target)}</code> (${s.chars} chars)`).join(", ");
+  el("runsub").textContent = run.title || "";
+  el("src").textContent = run.source || "";
+  el("runmeta").innerHTML = `
+    <h2>Run</h2>
+    <dl class="kv">
+      <dt>scenario</dt><dd><code>${esc(run.scenario)}</code> — ${esc(run.description||run.title)}</dd>
+      <dt>domain</dt><dd>${esc(run.domain)} · policy profile <code>${esc(run.policy_profile)}</code></dd>
+      <dt>defense</dt><dd><code>${esc(run.defense)}</code> · agent <code>${esc(run.agent)}</code> · escalations answered by <code>${esc(run.approver)}</code></dd>
+      <dt>tools enabled</dt><dd>${(run.allowed_tools||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</dd>
+      ${a.present ? `<dt>adversary</dt><dd><span class="tag bad">${esc(a.family)}</span><span class="tag">level ${esc(a.difficulty)}</span> ${esc(a.objective||"")}<div class="note" style="margin-top:4px">wrote into ${surfaces||"—"}</div></dd>` :
+                    `<dt>adversary</dt><dd><span class="tag ok">none — this run is a hard negative</span></dd>`}
+    </dl>`;
+}
+
+/* ---------- mandate ---------- */
+function renderMandate(){
+  el("mandate").innerHTML = `<h2>Sealed mandate${run.turns.length>1?"s":""}</h2>` + run.turns.map(t=>{
+    const m = t.mandate || {};
+    return `<dl class="kv" style="margin-bottom:12px">
+      <dt>turn ${t.turn} goal</dt><dd>${esc(t.goal||m.goal)}</dd>
+      <dt>seal</dt><dd><code>${esc(m.seal)}</code> ${t.exposed
+        ? `<span class="tag warn">sealed after earlier exposure — weaker guarantee</span>`
+        : `<span class="tag ok">sealed before any untrusted content was read</span>`}</dd>
+      <dt>authorises</dt><dd>${(m.capabilities||[]).map(c=>`<span class="tag ok">${esc(c)}</span>`).join("")||"<span class='note'>none</span>"}</dd>
+      ${(m.prohibited||[]).length?`<dt>refuses</dt><dd>${m.prohibited.map(c=>`<span class="tag bad">${esc(c)}</span>`).join("")}</dd>`:""}
+      <dt>records named</dt><dd>${(m.resources||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join("")||"<span class='note'>none</span>"}
+        ${(m.open_resolution_families||[]).length?`<span class="note">· indirect reference allowed for: ${m.open_resolution_families.join(", ")}</span>`:""}</dd>
+    </dl>`;
+  }).join("");
+}
+
+/* ---------- timeline ---------- */
+function renderTimeline(){
+  el("timeline").innerHTML = run.steps.map((s,i)=>{
+    const iv = s.decision ? s.decision.intervention : "—";
+    return `<button class="step" role="tab" aria-current="${i===selected}" data-i="${i}">
+      <div class="n">turn ${s.turn} · step ${s.step}</div>
+      <div class="t">${esc(s.tool)}</div>
+      ${chip(iv)}
+      ${s.harness_label==="injected"?'<div class="adv">⚠ attacker-authored</div>':''}
+    </button>`;
+  }).join("");
+  [...document.querySelectorAll(".step")].forEach(b=>b.onclick=()=>{selected=+b.dataset.i;renderDetail();renderProvenance();renderTimeline();});
+}
+
+/* ---------- risk meter ---------- */
+function meter(d){
+  const r = d.risk.risk, tol = d.tolerance ?? 0, blk = d.block_threshold ?? 1;
+  return `<div class="meter">
+    <div class="track" role="img" aria-label="risk ${pct(r)}, allow below ${pct(tol)}, block at or above ${pct(blk)}">
+      <span class="fill" style="width:${(r*100).toFixed(1)}%"></span>
+      <span class="tick tol" style="left:${(tol*100).toFixed(1)}%"></span>
+      <span class="tick blk" style="left:${(blk*100).toFixed(1)}%"></span>
+    </div>
+    <div class="scale">
+      <span>risk <strong>${r.toFixed(3)}</strong></span>
+      <span>allow ≤ ${tol.toFixed(2)}</span>
+      <span>block ≥ ${blk.toFixed(2)}</span>
+      <span>confidence ${d.risk.confidence.toFixed(2)}</span>
+    </div>
+  </div>`;
+}
+
+/* ---------- evidence waterfall ---------- */
+function waterfall(d){
+  const rows = [{code:"PRIOR (base rate)", family:"prior", logit:d.risk.bias ?? 0, strength:1, weight:d.risk.bias ?? 0,
+                 why:"Before any evidence, an action is assumed legitimate."}]
+    .concat(d.risk.contributions);
+  const max = Math.max(1, ...rows.map(r=>Math.abs(r.logit)));
+  const body = rows.map(r=>{
+    const w = (Math.abs(r.logit)/max)*50;
+    const dir = r.logit>=0 ? "up" : "down";
+    const ev = (d.evidence||[]).find(e=>e.code===r.code);
+    return `<div class="code" title="${esc(ev?ev.why:r.why||"")}">${esc(r.code)}</div>
+      <div class="bar"><i class="${dir}" style="width:${w}%"></i></div>
+      <div class="val">${r.logit>=0?"+":""}${r.logit.toFixed(2)}</div>`;
+  }).join("");
+  const total = d.risk.logit;
+  return `<div class="wf">${body}
+      <div class="code"><strong>TOTAL log-odds</strong></div><div class="bar"></div>
+      <div class="val"><strong>${total>=0?"+":""}${total.toFixed(2)}</strong></div>
+    </div>
+    <div class="legend">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--up);border-radius:2px"></span> raises risk</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--down);border-radius:2px"></span> lowers risk</span>
+      <span>logistic(total) = ${d.risk.risk.toFixed(3)}</span>
+    </div>`;
+}
+
+/* ---------- step detail ---------- */
+function renderDetail(){
+  const s = run.steps[selected];
+  if(!s){el("detail").innerHTML="<h2>Decision</h2><p class='note'>No steps recorded.</p>";return;}
+  const d = s.decision;
+  if(!d){el("detail").innerHTML=`<h2>Decision</h2><p class='note'>No decision recorded for this step.</p>`;return;}
+  const changed = d.executed && JSON.stringify(d.executed.args)!==JSON.stringify(d.candidate.args);
+  el("detail").innerHTML = `
+    <h2>Decision — turn ${s.turn}, step ${s.step}</h2>
+    <div class="verdict">
+      ${chip(d.intervention)}
+      <span class="tag">capability <strong>${esc(d.capability)}</strong></span>
+      <span class="tag">severity ${esc(d.severity)}</span>
+      ${s.harness_label==="injected"?'<span class="tag bad">attacker-authored (ground truth, not shown to the guard)</span>':'<span class="tag ok">from the user\'s own plan</span>'}
+    </div>
+    <p><strong>Agent proposed</strong> <code>${esc(d.candidate.tool)}(${esc(JSON.stringify(d.candidate.args))})</code></p>
+    ${meter(d)}
+    <p class="note" style="margin:10px 0 2px">${esc(d.reason)}</p>
+    ${(d.hard_rules||[]).map(r=>`<div class="rule"><strong>${esc(r.code)}</strong> — floor ${esc(r.floor)}<br>${esc(r.why)}</div>`).join("")}
+    <h2 style="margin-top:16px">Evidence</h2>
+    ${waterfall(d)}
+    ${(d.alternatives_considered||[]).length?`<h2 style="margin-top:16px">Weaker alternatives considered</h2>
+      <div class="scroll"><table><thead><tr><th>strategy</th><th>action</th><th class="num">residual risk</th><th>outcome</th></tr></thead><tbody>
+      ${d.alternatives_considered.map(a=>`<tr><td>${esc(a.strategy)}${a.accepted?' <span class="tag ok">chosen</span>':''}</td>
+        <td><code>${esc(a.action.tool)}(${esc(JSON.stringify(a.action.args))})</code></td>
+        <td class="num">${a.residual_risk.toFixed(3)}</td><td>${chip(a.would_be)}</td></tr>`).join("")}
+      </tbody></table></div>`:""}
+    ${changed?`<p style="margin-top:12px"><strong>Executed instead</strong> <code>${esc(d.executed.tool)}(${esc(JSON.stringify(d.executed.args))})</code></p>`:""}
+    ${s.human_review?`<p style="margin-top:12px"><span class="tag ${s.human_review.approved?'ok':'bad'}">human ${s.human_review.approved?"approved":"denied"}</span> <span class="note">(${esc(s.human_review.mode)})</span></p>`:""}
+    ${s.blocked?`<p class="note" style="margin-top:8px">The environment never saw this call.</p>`:""}
+    ${(s.effects||[]).length?`<p style="margin-top:8px">Committed effect: ${s.effects.map(e=>`<span class="tag">${esc(e.effect)}</span>`).join("")}</p>`:""}
+    ${(s.hijacked||[]).length?`<p style="margin-top:8px" class="note">After this step the agent queued ${s.hijacked.length} instruction(s) it found inside the content it just read.</p>`:""}
+    ${s.response?`<p style="margin-top:12px"><strong>Agent response:</strong> ${esc(s.response)}</p>`:""}`;
+}
+
+/* ---------- provenance ---------- */
+function renderProvenance(){
+  const s = run.steps[selected];
+  const d = s && s.decision;
+  const cited = new Set();
+  if(d){ (d.evidence||[]).forEach(e=>(e.refs||[]).forEach(r=>{ if(String(r).startsWith("obs-")) cited.add(r); })); }
+  // Everything observed *before* this decision was taken. A step's own
+  // observations arrive after it executes, so the selected step is excluded.
+  const seen = [];
+  for(let i=0;i<run.steps.length;i++){
+    if(i>=selected) break;
+    run.steps[i].observations.forEach(o=>seen.push(o));
+  }
+  const args = d ? Object.entries(d.candidate.args).filter(([k,v])=>typeof v==="string"&&v.length<60).map(([k,v])=>v) : [];
+  const body = seen.map(id=>{
+    const o = run.observations[id]; if(!o) return "";
+    const isCited = cited.has(id);
+    let ex = esc(o.excerpt);
+    args.forEach(a=>{ if(a && ex.includes(esc(a))) ex = ex.split(esc(a)).join(`<mark>${esc(a)}</mark>`); });
+    return `<div class="obs ${isCited?"authored":(o.trust.startsWith("UNTRUSTED")||o.trust==="ADVERSARY_CONTROLLED"?"untrusted":"")}">
+      <div><code>${esc(o.source_ref)}</code>
+        <span class="tag ${o.trust.startsWith("UNTRUSTED")?"warn":"ok"}">${esc(o.trust)}</span>
+        <span class="tag ${["RESTRICTED","CONFIDENTIAL"].includes(o.sensitivity)?"bad":""}">${esc(o.sensitivity)}</span>
+        ${(o.decoded_views||[]).length?`<span class="tag warn">decodes as: ${esc(o.decoded_views.join(", "))}</span>`:""}
+        ${isCited?'<span class="tag bad">cited in this decision</span>':''}</div>
+      <div class="excerpt">${ex}</div>
+      ${(o.decoded_excerpts||[]).map(dv=>`<div class="excerpt" style="border-left:3px solid var(--block);padding-left:8px;margin-top:6px">
+         <strong>decoded (${esc(dv.transform)}):</strong> ${esc(dv.text)}</div>`).join("")}
+      </div>`;
+  }).join("");
+  el("provenance").innerHTML = `<h2>What the agent had read by this point</h2>
+    <p class="note">Highlighted spans are the exact text an argument of this call was traced back to.</p>
+    ${body || "<p class='note'>Nothing had been observed yet — this call was proposed from the user's goal alone.</p>"}`;
+}
+
+/* ---------- table view ---------- */
+function renderTable(){
+  el("tableview").innerHTML = `<h2>All decisions (text view)</h2><div class="scroll"><table>
+    <thead><tr><th>turn</th><th>step</th><th>tool</th><th>origin</th><th>decision</th>
+    <th class="num">risk</th><th class="num">tol.</th><th class="num">block</th><th class="num">conf.</th><th>top reason codes</th></tr></thead>
+    <tbody>${run.steps.map(s=>{const d=s.decision;if(!d)return "";
+      return `<tr><td>${s.turn}</td><td>${s.step}</td><td><code>${esc(s.tool)}</code></td>
+      <td>${s.harness_label==="injected"?"attacker":"user"}</td>
+      <td>${GLYPH[d.intervention]} ${d.intervention}</td>
+      <td class="num">${d.risk.risk.toFixed(3)}</td><td class="num">${(d.tolerance??0).toFixed(2)}</td>
+      <td class="num">${(d.block_threshold??1).toFixed(2)}</td><td class="num">${d.risk.confidence.toFixed(2)}</td>
+      <td>${esc((d.risk.reason_codes||[]).slice(0,3).join(", "))}</td></tr>`;}).join("")}
+    </tbody></table></div>`;
+}
+
+/* ---------- verdict ---------- */
+function renderVerdict(){
+  const v = run.verdict;
+  if(!v){el("verdict").innerHTML="";return;}
+  const row = c=>`<tr><td>${c.passed?"✓ pass":"✕ FAIL"}</td><td><code>${esc(c.name)}</code></td><td>${esc(c.detail)}</td></tr>`;
+  el("verdict").innerHTML = `<h2>Verdict</h2>
+    <div class="verdict"><span class="big">${esc(v.overall)}</span>
+      <span class="tag ${v.utility_pass?"ok":"bad"}">task ${v.utility_pass?"completed":"not completed"}</span>
+      <span class="tag ${v.security_pass?"ok":"bad"}">attack ${v.security_pass?"contained":"succeeded"}</span>
+      ${v.over_refusal?'<span class="tag bad">over-refusal: the defense broke legitimate work</span>':""}
+      ${(v.leaked_canaries||[]).length?`<span class="tag bad">leaked: ${esc(v.leaked_canaries.join("; "))}</span>`:'<span class="tag ok">no classified marker left the sandbox</span>'}
+    </div>
+    <div class="scroll"><table><thead><tr><th>result</th><th>check</th><th>detail</th></tr></thead><tbody>
+      ${(v.utility||[]).map(row).join("")}${(v.security||[]).map(row).join("")}
+    </tbody></table></div>
+    <p class="note" style="margin-top:8px">interventions: ${esc(JSON.stringify(v.interventions))} · ${esc(v.duration_ms)} ms</p>`;
+}
+
+function renderAll(){ renderTiles(); renderMeta(); renderMandate(); renderTimeline(); renderDetail(); renderProvenance(); renderTable(); renderVerdict(); }
+
+if(!RUNS.length){
+  document.querySelector(".wrap").innerHTML = "<h1>SENTINEL</h1><p>No traces found. Run <code>sentinel suite</code> then <code>sentinel dashboard</code>.</p>";
+} else {
+  selected = firstInteresting();
+  renderAll();
+}
+</script>
+</body>
+</html>

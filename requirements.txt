@@ -1,0 +1,2 @@
+# SENTINEL has exactly one runtime dependency.
+PyYAML>=6.0

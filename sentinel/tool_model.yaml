@@ -1,0 +1,298 @@
+# SENTINEL capability model -- declared once by the operator, not per scenario.
+#
+# The defense never learns what a tool does from a scenario file. It reads this
+# catalogue, which describes each tool the way an operator would describe it to
+# a security review:
+#
+#   capability          dotted family.verb; the unit a mandate authorizes
+#   consequence         READ_ONLY < LOCAL_WRITE < PERSISTENT_WRITE
+#                       < EXTERNAL_EFFECT < IRREVERSIBLE
+#   oversight_impact    true when the call reduces monitoring, logging or audit
+#   sink                where content written by this call ends up, if anywhere
+#   requires            lifecycle predecessors that must already have happened
+#   safer_alternative   the downgrade a rewrite may substitute
+#   args.role           target  = which record is acted on
+#                       control = changes the nature or consequence of the act
+#                       content = free text carried by the act
+#   effects             the effect name the environment will record; `when`
+#                       rules let one tool produce different effects by argument
+#   intent              vocabulary used to decide whether a *user goal* asks
+#                       for this tool. Applied only to trusted goal text.
+#
+# Any tool absent from this catalogue is treated as unknown and maximally
+# consequential (see capability.UNKNOWN_TOOL).
+
+tools:
+
+  # ------------------------------------------------------------------- agent
+  respond:
+    capability: agent.respond
+    consequence: LOCAL_WRITE
+    always_authorized: true      # talking to the user is inherent to the agent
+    sink: user_response
+    args: {content: {role: content}}
+    required_args: [content]
+
+  # ---------------------------------------------------------------- enterprise
+  document_read:
+    capability: document.read
+    consequence: READ_ONLY
+    args: {document_id: {role: target}}
+    required_args: [document_id]
+    intent:
+      verbs: [read, open, review, summarize, summarise, check, look, fetch, get]
+      objects: [document, doc, guide, file, manual, handbook, policy, onboarding]
+
+  email_read:
+    capability: email.read
+    consequence: READ_ONLY
+    args: {email_id: {role: target}}
+    required_args: [email_id]
+    intent:
+      verbs: [read, open, review, check, triage, summarize, summarise]
+      objects: [email, mail, message, inbox, correspondence]
+
+  email_draft:
+    capability: email.draft
+    consequence: LOCAL_WRITE
+    sink: draft
+    args:
+      to: {role: control}
+      subject: {role: content}
+      body: {role: content}
+    required_args: [subject]
+    intent:
+      verbs: [draft, compose, write, prepare, summarize, summarise]
+      objects: [email, draft, summary, reply, message, note]
+
+  email_send:
+    capability: email.send
+    consequence: EXTERNAL_EFFECT
+    sink: outbound
+    safer_alternative: {tool: email_draft, keep: [subject, body]}
+    args:
+      to: {role: control}
+      subject: {role: content}
+      body: {role: content}
+    required_args: [to, body]
+    intent:
+      verbs: [send, forward, dispatch, transmit, notify]
+      objects: [email, mail, message, recipient]
+
+  ticket_update:
+    capability: ticket.update
+    consequence: PERSISTENT_WRITE
+    sink: ticket
+    args:
+      ticket_id: {role: target}
+      comment: {role: content}
+      status: {role: control}
+      assignee: {role: control}
+      priority: {role: control}
+    required_args: [ticket_id]
+    effects:
+      - {when: {status: closed}, effect: ticket_close}
+      - {when: {status: reopened}, effect: ticket_reopen}
+    intent:
+      verbs: [update, comment, annotate, log, add, record, append]
+      objects: [ticket, case, issue, details]
+
+  ticket_close:
+    capability: ticket.close
+    consequence: PERSISTENT_WRITE
+    safer_alternative: {tool: ticket_update, keep: [ticket_id, comment]}
+    args:
+      ticket_id: {role: target}
+      resolution: {role: content}
+    required_args: [ticket_id]
+    intent:
+      verbs: [close, resolve, complete, finish]
+      objects: [ticket, case, issue]
+
+  wiki_read:
+    capability: wiki.read
+    consequence: READ_ONLY
+    args: {page_id: {role: target}}
+    required_args: [page_id]
+    intent:
+      verbs: [read, open, check, review, consult]
+      objects: [wiki, page, article, knowledge]
+
+  memory_write:
+    capability: memory.write
+    consequence: PERSISTENT_WRITE
+    sink: memory
+    args:
+      key: {role: target}
+      value: {role: content}
+    required_args: [key, value]
+    intent:
+      verbs: [remember, store, save, note, record]
+      objects: [memory, note, preference, policy]
+
+  memory_read:
+    capability: memory.read
+    consequence: READ_ONLY
+    args: {key: {role: target}}
+    required_args: [key]
+    intent:
+      verbs: [recall, read, check, retrieve]
+      objects: [memory, note, preference]
+
+  # ------------------------------------------------------------------- finance
+  account_summary:
+    capability: account.read
+    consequence: READ_ONLY
+    args: {customer_id: {role: target}}
+    required_args: [customer_id]
+    intent:
+      verbs: [look, lookup, "look up", summarize, summarise, review, check, find, pull, read]
+      objects: [customer, account, client, status, profile, balance]
+
+  payment_prepare:
+    capability: payment.prepare
+    consequence: LOCAL_WRITE
+    sink: payment_draft
+    args:
+      payment_id: {role: target}
+      amount: {role: control}
+      beneficiary: {role: control}
+      memo: {role: content}
+    required_args: [payment_id]
+    intent:
+      verbs: [prepare, draft, stage, set, raise]
+      objects: [payment, transfer, refund, disbursement]
+
+  payment_confirm:
+    capability: payment.confirm
+    consequence: PERSISTENT_WRITE
+    requires: [payment_prepare]
+    safer_alternative: {tool: payment_prepare, keep: [payment_id]}
+    args: {payment_id: {role: target}}
+    required_args: [payment_id]
+    intent:
+      verbs: [confirm, approve, verify, authorize, authorise]
+      objects: [payment, transfer, refund, disbursement]
+
+  payment_execute:
+    capability: payment.execute
+    consequence: IRREVERSIBLE
+    requires: [payment_confirm]
+    safer_alternative: {tool: payment_prepare, keep: [payment_id]}
+    args: {payment_id: {role: target}}
+    required_args: [payment_id]
+    intent:
+      verbs: [execute, release, disburse, pay, run, settle]
+      objects: [payment, transfer, refund, disbursement]
+
+  case_note_create:
+    capability: case.write
+    consequence: PERSISTENT_WRITE
+    sink: case_note
+    args:
+      customer_id: {role: target}
+      note: {role: content}
+    required_args: [customer_id, note]
+    intent:
+      verbs: [note, record, document, write, log]
+      objects: [case, note, file, dispute]
+
+  customer_notify:
+    capability: customer.notify
+    consequence: EXTERNAL_EFFECT
+    sink: outbound
+    safer_alternative: {tool: case_note_create, keep: [customer_id]}
+    args:
+      customer_id: {role: target}
+      channel: {role: control}
+      message: {role: content}
+    required_args: [customer_id, message]
+    intent:
+      verbs: [notify, inform, contact, tell, email]
+      objects: [customer, client, holder]
+
+  # ----------------------------------------------------------------------- soc
+  alert_read:
+    capability: alert.read
+    consequence: READ_ONLY
+    args: {alert_id: {role: target}}
+    required_args: [alert_id]
+    intent:
+      verbs: [investigate, read, triage, check, review, examine, analyse, analyze]
+      objects: [alert, detection, signal, event]
+
+  intel_lookup:
+    capability: intel.read
+    consequence: READ_ONLY
+    args: {indicator: {role: target}}
+    required_args: [indicator]
+    intent:
+      verbs: [correlate, enrich, investigate, lookup, check]
+      objects: [intel, indicator, ioc, reputation]
+
+  incident_create:
+    capability: incident.create
+    consequence: PERSISTENT_WRITE
+    sink: incident
+    args:
+      title: {role: content}
+      team: {role: control}
+      severity: {role: control}
+    required_args: [title]
+    intent:
+      verbs: [create, open, raise, file, declare]
+      objects: [incident, case, ticket]
+
+  incident_comment:
+    capability: incident.update
+    consequence: PERSISTENT_WRITE
+    sink: incident
+    args:
+      incident_id: {role: target}
+      comment: {role: content}
+    required_args: [incident_id]
+    intent:
+      verbs: [comment, note, update, annotate]
+      objects: [incident, case]
+
+  incident_close:
+    capability: incident.close
+    consequence: PERSISTENT_WRITE
+    safer_alternative: {tool: incident_comment, keep: [incident_id]}
+    args:
+      incident_id: {role: target}
+      resolution: {role: content}
+    required_args: [incident_id]
+    intent:
+      verbs: [close, resolve, dismiss, complete]
+      objects: [incident, case]
+
+  credential_reset:
+    capability: identity.credential_reset
+    consequence: IRREVERSIBLE
+    args: {user_id: {role: target}}
+    required_args: [user_id]
+    intent:
+      verbs: [reset, rotate, revoke, change]
+      objects: [credential, password, token, account]
+
+  host_isolate:
+    capability: host.isolate
+    consequence: EXTERNAL_EFFECT
+    args: {host_id: {role: target}}
+    required_args: [host_id]
+    intent:
+      verbs: [isolate, quarantine, contain, segment]
+      objects: [host, endpoint, machine, workstation]
+
+  monitoring_disable:
+    capability: monitoring.disable
+    consequence: IRREVERSIBLE
+    oversight_impact: true
+    args:
+      host_id: {role: target}
+      duration: {role: control}
+    required_args: [host_id]
+    intent:
+      verbs: [disable, silence, mute, suppress, stop]
+      objects: [monitoring, telemetry, logging, alerting, edr]

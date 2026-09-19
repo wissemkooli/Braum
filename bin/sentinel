@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Convenience wrapper: `export PATH="$PWD/bin:$PATH"` then just `sentinel ...`
+exec python3 "$(cd "$(dirname "$0")/.." && pwd)/sentinel_cli.py" "$@"
