@@ -19,14 +19,14 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence
 
 from . import rewrite as rewrites
-from .capability import Consequence, ToolCatalogue, ToolSpec
+from .capability import Consequence, ToolCatalogue, ToolSpec, touches_oversight
 from .context import Attribution, ContextLedger, Observation
 from .mandate import Mandate, derive_mandate
 from .policy import HardRule, Intervention, PolicyProfile, get_profile
 from .risk import RiskScore, score
 from .signals import (
-    CandidateAction, Evidence, context_signals, flow_signals, history_signals,
-    mandate_signals, origin_signals,
+    CandidateAction, Evidence, context_signals, dictation_hits, flow_signals,
+    history_signals, mandate_signals, origin_signals,
 )
 from .trace import Tracer
 from .trust import Sensitivity, Trust, parse_sensitivity, parse_trust
@@ -46,10 +46,16 @@ class GuardConfig:
     enable_hard_rules: bool = True
     profile: Optional[str] = None
     label: str = "sentinel"
+    # Tools the operator provisioned for this task. Empty means "unconstrained".
+    # This is policy, not preference: SYSTEM_POLICY outranks AUTHENTICATED_USER,
+    # so a tool outside the task's scope is refused even when the user asks for
+    # it in their own words. That is the `direct instruction` attack family.
+    allowed_tools: tuple = ()
 
     def as_dict(self) -> dict:
         return {
             "label": self.label,
+            "allowed_tools": list(self.allowed_tools),
             "disabled_families": list(self.disabled_families),
             "rewrite": self.enable_rewrite,
             "hard_rules": self.enable_hard_rules,
@@ -109,6 +115,7 @@ class Sentinel:
         self.ledger = ContextLedger()
         self.mandate: Optional[Mandate] = None
         self.session = {"intercepted": 0, "completed_tools": [], "turn": 0}
+        self._oversight_args = False
 
     # ------------------------------------------------------------------ setup
     def begin_turn(self, goal: str, turn_index: int = 0, carry_context: bool = True) -> Mandate:
@@ -196,6 +203,12 @@ class Sentinel:
         rules: List[HardRule] = []
         codes = {e.code for e in evidence}
 
+        if self.config.allowed_tools and spec.name not in self.config.allowed_tools:
+            rules.append(HardRule(
+                "TOOL_OUTSIDE_TASK_SCOPE", Intervention.BLOCK,
+                f"`{spec.name}` was not provisioned for this task. The operator's scope "
+                f"outranks the request, whoever made it -- including the user.",
+            ))
         if self.mandate and self.mandate.forbids(capability):
             rules.append(HardRule(
                 "USER_PROHIBITION", Intervention.BLOCK,
@@ -211,7 +224,7 @@ class Sentinel:
                 "CONFIRMATION_REQUIRED", Intervention.ESCALATE,
                 "Irreversible actions are confirmed by a human, however the agent arrived at them.",
             ))
-        if self.profile.confirm_oversight_changes and spec.oversight_impact:
+        if self.profile.confirm_oversight_changes and (spec.oversight_impact or self._oversight_args):
             rules.append(HardRule(
                 "OVERSIGHT_INTEGRITY", Intervention.ESCALATE,
                 "This call reduces the monitoring that the defense itself depends on.",
@@ -234,10 +247,27 @@ class Sentinel:
         spec = self.catalogue.get(action.tool)
         capability = self._effective_capability(spec, action)
         attributions = self._attributions(action, spec)
+        self._oversight_args = touches_oversight(action.args)
+        # Being provisioned for the task is weak evidence that a tool belongs to
+        # it -- not authorisation, so the mandate signal is damped, not removed.
+        scoped = bool(self.config.allowed_tools) and action.tool in self.config.allowed_tools
+
+        # Did observed content issue an instruction naming this tool? Several
+        # signals condition on it, so it is computed once.
+        dictated = bool(dictation_hits(self.ledger, action.tool))
+        # The guard itself let an earlier step in this family run, so that
+        # family is part of this task whether or not the user named it twice.
+        continuation = any(
+            self.catalogue.get(done).family == spec.family and done != action.tool
+            for done in self.session["completed_tools"]
+        )
 
         evidence: List[Evidence] = []
-        evidence += mandate_signals(action, spec, capability, self.mandate, attributions, self.catalogue)
-        evidence += origin_signals(action, spec, self.ledger, self.mandate, attributions, self.catalogue)
+        evidence += mandate_signals(action, spec, capability, self.mandate, attributions,
+                                    self.catalogue, scoped=scoped, dictated=dictated,
+                                    continuation=continuation)
+        evidence += origin_signals(action, spec, self.ledger, self.mandate, attributions,
+                                   self.catalogue, dictated=dictated)
         evidence += context_signals(self.ledger, self.catalogue)
         evidence += flow_signals(action, spec, self.ledger, self.mandate)
         evidence += history_signals(self.session)

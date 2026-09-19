@@ -80,8 +80,19 @@ class Attribution:
 
     @property
     def untrusted_only(self) -> bool:
-        """The decisive predicate: authored by untrusted content, nowhere else."""
-        return self.resolved and not self.in_trusted and bool(self.sources)
+        """The decisive predicate: authored by untrusted content, nowhere else.
+
+        The sources must themselves be untrusted. An identifier that first
+        appeared in the structured result of a call the guard already approved
+        (a freshly minted `REM-0001`) is not attacker-authored, and treating it
+        as such blocks the second half of every prepare-then-execute task.
+        """
+        return (self.resolved and not self.in_trusted and bool(self.sources)
+                and self.trust.untrusted)
+
+    @property
+    def trusted_origin(self) -> bool:
+        return self.resolved and (self.in_trusted or not self.trust.untrusted)
 
     @property
     def covert(self) -> bool:

@@ -14,11 +14,38 @@ the **user** or by something the agent **read**. A payment id that exists only
 inside a vendor's advisory field was written by the vendor, whatever the
 surrounding prose claims about policy.
 
-**Result on the scenario library: 6/6 attacks contained, 9/9 tasks completed,
-0 benign runs blocked.** Including the attacks that beat it, which ship in
+**On the organizers' own harness** (`Sentinel_Starter_Kit`, 19 public + 9
+validation scenarios, static and adaptive attackers):
+
+| split | BTU ↑ | ASR ↓ | canary leaks | false blocks | official score |
+|---|---|---|---|---|---|
+| public | **1.000** | **0.000** | **0** | 1 escalation | **0.9943** |
+| validation | **1.000** | **0.000** | **0** | **0** | **1.0000** |
+
+Every attack contained, every task completed, nothing classified leaked —
+and the same numbers under the adaptive mutation attacker. That beats their
+`provenance` baseline (0.988 / 0.858) and sits alongside `heuristic_risk`.
+Details, and the five real defects this integration exposed in our defense:
+[docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md).
+
+On our own scenario library: 6/6 attacks contained, 9/9 tasks completed,
+0 benign runs blocked — including the attacks that beat it, which ship in
 `scenarios/known_failures/`.
 
 ---
+
+## Submitting it
+
+The defense implements the official **v1 defense API**. `submission/` is the
+deployable package: FastAPI service (`/healthz`, `/v1/decision`), a non-root
+Dockerfile, and `sentinel-submission.yaml`.
+
+```bash
+docker build -f submission/Dockerfile -t sentinel-defense .
+docker run --rm -p 8080:8080 sentinel-defense
+# then, in a clone of the starter kit:
+uv run sentinel eval public --defense-url http://127.0.0.1:8080
+```
 
 ## Quickstart
 
@@ -181,6 +208,7 @@ sentinel/             the defense — imports nothing from the harness
   rewrite.py          quarantine / redact / downgrade
   guard.py            the decision loop
   trace.py            structured event log
+  api_adapter.py      the official v1 API, in plain dicts (no web deps)
 
 simulator/            the offline harness (may import sentinel; never the reverse)
   env.py tools.py     three synthetic domains, labelled tool output
@@ -195,6 +223,12 @@ scenarios/
   hard_negatives/     benign work that looks suspicious — over-refusal traps
   extended/           memory poisoning, long-horizon composition
   known_failures/     adaptive attacks that beat this defense
+
+submission/           the deployable v1 defense service (FastAPI + Docker)
+  app/main.py         GET /healthz, POST /v1/decision
+  app/models.py       v1 schemas: lenient requests, strict responses
+  Dockerfile          non-root, healthchecked
+  sentinel-submission.yaml
 
 observability/        replay.py, template.html, build.py
 docs/                 technical report, safety statement, results, video script
@@ -241,3 +275,5 @@ fictional; nothing touches a real system.
 | Failure analysis | [TECHNICAL_REPORT §8](docs/TECHNICAL_REPORT.md#8-failure-analysis) + `scenarios/known_failures/` |
 | Responsible-AI statement | [docs/SAFETY.md](docs/SAFETY.md) |
 | Video demonstration | shot list in [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md) |
+| Official-harness results | [docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md) |
+| Deployable submission | `submission/` (see [its README](submission/README.md)) |

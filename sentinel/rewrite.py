@@ -112,7 +112,13 @@ def downgrade(action: CandidateAction, spec: ToolSpec) -> List[Rewrite]:
     if not spec.safer_alternative:
         return []
     alt = spec.safer_alternative
-    args = {k: v for k, v in action.args.items() if k in alt.keep}
+    # `keep` names the arguments that certainly carry over; anything else the
+    # original call had is preserved too, because the safer tool in the same
+    # family generally accepts the same schema and silently dropping a required
+    # argument turns a rewrite into a failed call.
+    args = dict(action.args) if not alt.keep else {
+        k: v for k, v in action.args.items() if k in alt.keep or k in spec.args
+    }
     return [Rewrite(
         "downgrade",
         action.clone(tool=alt.tool, args=args),

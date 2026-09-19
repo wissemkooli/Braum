@@ -153,9 +153,15 @@ def _instruction_shape(text: str, catalogue: ToolCatalogue) -> float:
 # ------------------------------------------------------------------- families
 
 
+def dictation_hits(ledger: ContextLedger, tool: str):
+    """Untrusted spans that name this tool the way an instruction would."""
+    return ledger.untrusted_matching(lambda text: _call_shape(text, tool))
+
+
 def mandate_signals(
     action: CandidateAction, spec: ToolSpec, effective_capability: str,
     mandate: Mandate, attributions: Dict[str, Attribution], catalogue: ToolCatalogue,
+    scoped: bool = False, dictated: bool = False, continuation: bool = False,
 ) -> List[Evidence]:
     out: List[Evidence] = []
     if spec.always_authorized:
@@ -182,8 +188,17 @@ def mandate_signals(
             Consequence.EXTERNAL_EFFECT: 1.0,
             Consequence.IRREVERSIBLE: 1.0,
         }
+        strength = by_severity[spec.consequence] * (0.4 if scoped else 1.0)
+        # Lifecycle continuation: an agent authorised to *prepare* something was
+        # implicitly authorised to finish the thing it prepared. The user who
+        # says "prepare the isolation and execute it once I confirm" rarely
+        # names the tool family twice. This damps the evidence only -- the
+        # confirmation rule for irreversible actions is a hard floor and is
+        # untouched, so the human is still asked.
+        if continuation:
+            strength *= 0.15
         out.append(Evidence(
-            "MANDATE_CAPABILITY_EXPANSION", "mandate", by_severity[spec.consequence],
+            "MANDATE_CAPABILITY_EXPANSION", "mandate", strength,
             f"{effective_capability} is outside the authority sealed from the user goal "
             f"({', '.join(sorted(mandate.capabilities)) or 'none'}).",
             (effective_capability, mandate.seal),
@@ -197,11 +212,19 @@ def mandate_signals(
             continue
         if value in mandate.resources:
             continue
+        # Identifiers produced by an earlier approved step are part of the task,
+        # not a detour away from it.
+        att = attributions.get(arg)
+        if att is not None and att.trusted_origin:
+            continue
         off_target.append((arg, value))
     open_family = mandate.resource_open(spec.family)
     if off_target:
+        strength = 0.25 if open_family else 0.9
+        if spec.consequence == Consequence.READ_ONLY and not dictated:
+            strength = min(strength, 0.35)
         out.append(Evidence(
-            "TARGET_OUTSIDE_MANDATE", "mandate", 0.25 if open_family else 0.9,
+            "TARGET_OUTSIDE_MANDATE", "mandate", strength,
             f"Acts on {', '.join(v for _, v in off_target)}, which the user never named "
             + ("(the goal referred to the record indirectly, so some resolution is expected)."
                if open_family else f"(goal named: {', '.join(sorted(mandate.resources)) or 'nothing'})."),
@@ -226,12 +249,21 @@ def mandate_signals(
 def origin_signals(
     action: CandidateAction, spec: ToolSpec, ledger: ContextLedger,
     mandate: Mandate, attributions: Dict[str, Attribution], catalogue: ToolCatalogue,
+    dictated: bool = False,
 ) -> List[Evidence]:
     """Argument Provenance Attribution: who authored this action?"""
     out: List[Evidence] = []
     role_weight = {"control": 1.0, "target": 0.85, "content": 0.15}
     if mandate.resource_open(spec.family):
         role_weight["target"] = 0.25
+    # Following a reference found in content is how investigation works: an
+    # analyst triaging an alert looks up the domain the alert names, and there
+    # is no provenance difference between that and a malicious redirect.
+    # What *does* separate them is whether the content issued an instruction
+    # naming this tool. So a read is cheap only while nothing told the agent to
+    # make it; the moment the content dictates the call, full weight returns.
+    if spec.consequence == Consequence.READ_ONLY and not dictated:
+        role_weight["target"] = min(role_weight["target"], 0.30)
 
     decisive_args = [a for a in action.args if spec.role_of(a) in ("control", "target")]
     graded, covert, unresolved, trusted = [], [], [], []
@@ -291,7 +323,7 @@ def origin_signals(
         ))
 
     # Direct dictation: untrusted text that names this very tool in call shape.
-    hits = ledger.untrusted_matching(lambda t: _call_shape(t, action.tool))
+    hits = dictation_hits(ledger, action.tool)
     if hits:
         arg_overlap = max(
             [role_weight.get(spec.role_of(a), 0.3) for a, att in attributions.items()
@@ -371,6 +403,11 @@ def context_signals(ledger: ContextLedger, catalogue: ToolCatalogue) -> List[Evi
     return out
 
 
+# Sinks that leave the organisation. Content reaching these is disclosure;
+# content written into an internal record is filing.
+EXTERNAL_SINKS = ("outbound", "external", "public")
+
+
 def flow_signals(
     action: CandidateAction, spec: ToolSpec, ledger: ContextLedger, mandate: Mandate,
 ) -> List[Evidence]:
@@ -378,17 +415,19 @@ def flow_signals(
     out: List[Evidence] = []
     if not spec.sink:
         return out
+    external_sink = any(marker in spec.sink for marker in EXTERNAL_SINKS)
 
     worst: Optional[tuple] = None
     unauthorized_source = None
     for arg in spec.args_with_role("content") + spec.args_with_role("control"):
         value = action.args.get(arg)
         for obs, share in ledger.taint_of(value):
-            if obs.sensitivity >= Sensitivity.CONFIDENTIAL:
+            ids = set(ID_PATTERN.findall(obs.source_ref))
+            off_mandate = bool(ids) and not (ids & set(mandate.resources)) and not mandate.resource_open(spec.family)
+            if obs.sensitivity >= Sensitivity.CONFIDENTIAL and (external_sink or off_mandate):
                 if worst is None or obs.sensitivity > worst[1].sensitivity:
                     worst = (arg, obs, share)
-            ids = set(ID_PATTERN.findall(obs.source_ref))
-            if ids and not (ids & set(mandate.resources)) and not mandate.resource_open(spec.family):
+            if off_mandate:
                 unauthorized_source = unauthorized_source or (arg, obs)
 
     if worst:

@@ -167,6 +167,25 @@ Then show F1 side by side with the scenario it is derived from:
 
 ---
 
+### 6b · It runs in the organizers' harness (30 s)
+
+```bash
+uv run sentinel eval validation --defense-url http://127.0.0.1:8099
+```
+
+> "This is not our scorer. This is the organizers' evaluator, running our
+> defense as an HTTP service over their scenario library: every attack
+> contained, every task completed, nothing classified leaked — and the same
+> under the adaptive attacker.
+>
+> It did not start there. Our first run scored 0.625, and every miss was an
+> attack where *the user themselves* asked for something out of policy. We had
+> built the whole defense around the idea that authority flows from the user.
+> The trust lattice we had already implemented says system policy outranks the
+> user — we just hadn't wired it. That is in the report."
+
+---
+
 ### 7 · Close (20 s)
 
 > "Every number came from a trace written while the run was happening. The

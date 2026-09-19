@@ -17,6 +17,7 @@ still updates the ticket, rather than being refused outright.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Dict, List, Optional
@@ -137,4 +138,12 @@ DEFAULT_PROFILE = "enterprise_standard"
 
 
 def get_profile(name: Optional[str]) -> PolicyProfile:
-    return PROFILES.get(name or DEFAULT_PROFILE, PROFILES[DEFAULT_PROFILE])
+    """Return a *copy*.
+
+    Profiles are mutable (a caller may relax `confirm_irreversible` for one
+    decision, e.g. when a human has already approved that exact action). If the
+    shared instance were handed out, that relaxation would silently apply to
+    every later decision in the process -- including other runs. A guard owns
+    its policy; the registry owns the template.
+    """
+    return copy.deepcopy(PROFILES.get(name or DEFAULT_PROFILE, PROFILES[DEFAULT_PROFILE]))

@@ -22,6 +22,7 @@ Demonstrated on the scenario library, with traces in `artifacts/`:
 | Payload assembled from separately-harmless fragments | provenance is per-value, not per-message | `longhorizon_split_instruction` |
 | Exfiltration of classified content to a sink | information-flow hard rule + redaction rewrite | `flow_only` ablation |
 | Consequential action without a human | `CONFIRMATION_REQUIRED` / `OVERSIGHT_INTEGRITY` floors | both SOC and finance hard negatives |
+| A request out of policy made by the **user themselves** | `TOOL_OUTSIDE_TASK_SCOPE`: the operator's per-task tool scope outranks the request | `direct_instruction` scenarios in the official public split |
 
 ## 2. What it does not protect against
 
@@ -49,7 +50,13 @@ Stated plainly, with runnable evidence where we have it.
 6. **Content sanitisation.** Injected text that is part of a document survives
    into a legitimate summary of that document. A human reader sees the attack;
    a downstream agent reading that summary is freshly exposed.
-7. **The model, the sandbox, and the supply chain.** No fine-tuning, no
+7. **Policy we were not given.** `TOOL_OUTSIDE_TASK_SCOPE` only works because
+   the operator declares a per-task tool scope. Where no such scope exists, a
+   user asking for something out of policy is indistinguishable to us from a
+   user asking for something in policy — we originally missed this family
+   entirely (technical report §7.6.1), and the mechanism that covers it is
+   configuration, not inference.
+8. **The model, the sandbox, and the supply chain.** No fine-tuning, no
    guarantee about model internals, no protection if the tool catalogue itself
    is wrong or malicious.
 

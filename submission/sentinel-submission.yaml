@@ -1,0 +1,18 @@
+name: sentinel-provenance-guard
+kind: defense
+api_version: v1
+team: sentinel-indabax
+port: 8080
+models: []          # no pretrained model is used; decisions are deterministic
+datasets: []        # no external dataset is used
+resources:
+  memory: 512m
+  cpus: 1.0
+  gpus: 0
+description: >-
+  Decides by asking who authored an action rather than whether its text looks
+  malicious. Authority is derived from the user's goal and sealed before any
+  content is read; every decisive argument is traced, through decoded views,
+  to the span that authored it. Hard constraints (human confirmation for
+  irreversible acts, no classified content across a sink) sit outside the
+  score, and the weakest sufficient intervention is preferred over a block.
