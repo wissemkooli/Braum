@@ -29,7 +29,10 @@ user wanted, because the attacker named that record first. That beats their
 `provenance` baseline (0.988 / 0.858) and sits just under `heuristic_risk` on
 the public split (0.9986), level with it on validation.
 Details, and the five real defects this integration exposed in our defense:
-[docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md).
+[docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md). Pass/fail by the
+specification's attack families over all 28 scenarios, and an exact account of
+how this differs from the kit's `provenance` baseline (it loses the encoded
+exfiltration scenario; we do not), are in the technical report, §7.6 and §4.9.
 
 Those runs use the kit's deterministic mock agent, which follows a reference plan.
 
