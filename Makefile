@@ -2,7 +2,7 @@
 .PHONY: help test suite compare ablate calibrate probes dashboard results all clean
 
 help:
-	@echo "make test       run the test suite (53 tests, stdlib only)"
+	@echo "make test       run the test suite (stdlib only)"
 	@echo "make suite      run every scenario against the defense"
 	@echo "make compare    run every scenario against every baseline"
 	@echo "make ablate     the ablation matrix"

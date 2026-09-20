@@ -319,7 +319,7 @@ There is no second, prettier version of events.
 ## 6. Reproduction
 
 ```bash
-python3 run_tests.py                    # 61 tests, standard library only
+python3 run_tests.py                    # 63 tests, standard library only
 ./bin/sentinel suite                    # the whole library
 ./bin/sentinel compare                  # against every baseline
 ./bin/sentinel ablate --verbose-ablation
@@ -740,8 +740,11 @@ the rules, and the defense did not touch these runs.
   `soc_hostile_log_text`. `OVERSIGHT_INTEGRITY` fired on the text of a `respond`
   action that talks about disabling monitoring — the agent explaining that it
   will not do it. The human approved both and both tasks completed, so nothing
-  was lost but an interruption; it is still a rule written for tool calls
-  matching on prose, and it is not fixed in this submission.
+  was lost but an interruption; it was still a rule written for tool calls
+  matching on prose. Fixed after the run: the oversight check no longer reads
+  text addressed to the user, only the arguments of calls that act
+  (`guard._evaluate`; two tests in `tests/test_api_adapter.py`). The table above
+  is from before the fix and has not been re-measured.
 
 **What this run does not show.** One seed, greedy decoding. Two attacks reach
 this agent on the public split and none on validation, so "2/2 contained" is the

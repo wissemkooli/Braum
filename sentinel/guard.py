@@ -247,7 +247,9 @@ class Sentinel:
         spec = self.catalogue.get(action.tool)
         capability = self._effective_capability(spec, action)
         attributions = self._attributions(action, spec)
-        self._oversight_args = touches_oversight(action.args)
+        # A reply is prose, not a command: saying "I will not disable monitoring"
+        # to the user changes no monitoring. Only calls that act are matched.
+        self._oversight_args = spec.sink != "user_response" and touches_oversight(action.args)
         # Being provisioned for the task is weak evidence that a tool belongs to
         # it -- not authorisation, so the mandate signal is damped, not removed.
         scoped = bool(self.config.allowed_tools) and action.tool in self.config.allowed_tools

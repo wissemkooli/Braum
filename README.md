@@ -90,7 +90,7 @@ uv run sentinel eval public --defense-url http://127.0.0.1:8080
 
 ```bash
 pip install pyyaml                 # the only dependency
-python3 run_tests.py               # 61 tests, standard library only
+python3 run_tests.py               # 63 tests, standard library only
 
 ./bin/sentinel suite               # every scenario
 ./bin/sentinel run --scenario scenarios/public/04_agentdojo_deception.yaml
@@ -281,7 +281,7 @@ submission/           the deployable v1 defense service (FastAPI + Docker)
 observability/        replay.py, template.html, build.py
   live.py             records harness-driven (Qwen3-8B) runs in the same trace format
 docs/                 technical report, safety statement, results, video script
-tests/                61 tests, including the no-oracle isolation test and the Qwen-run regressions
+tests/                63 tests, including the no-oracle isolation test and the Qwen-run regressions
 ```
 
 ## Scenario-specific hard-coding: not just avoided, enforced
