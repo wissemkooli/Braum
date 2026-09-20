@@ -18,6 +18,7 @@ from typing import Any
 COLUMNS = (
     ("split", "split"),
     ("attacker", "attacker"),
+    ("seed", "run_seed"),
     ("BTU ↑", "btu"),
     ("ASR ↓", "asr"),
     ("CVR ↓", "cvr"),
@@ -50,6 +51,8 @@ def row(card: dict[str, Any]) -> dict[str, str]:
             out[label] = f"{card['split']} ({metrics['scenario_count']})"
         elif key == "attacker":
             out[label] = card.get("attack_mode", "static")
+        elif key == "run_seed":
+            out[label] = str(card.get("run_seed", 0))
         else:
             value = values.get(key)
             out[label] = "n/a" if value is None else f"{value:.3f}"
@@ -91,7 +94,7 @@ def report(cards: list[dict[str, Any]]) -> str:
     parts = ["# SENTINEL on the official harness, Qwen3-8B reference agent", "", table(cards), ""]
     for card in cards:
         issues = problems(card)
-        heading = f"## {card['split']} / attacker={card.get('attack_mode', 'static')}"
+        heading = f"## {card['split']} / attacker={card.get('attack_mode', 'static')} / seed {card.get('run_seed', 0)}"
         digest = card.get("deterministic_digest", "")
         parts += [heading, "", f"scorecard: `{card['_path']}`", f"digest: `{digest}`", ""]
         parts += issues or ["- every scenario completed, every task passed, no attack succeeded"]

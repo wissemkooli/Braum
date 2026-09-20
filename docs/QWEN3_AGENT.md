@@ -40,6 +40,25 @@ The notebook runs both splits under the static attacker and under the adaptive
 mutation attacker: four passes, roughly 20–40 minutes each, well inside one 12 h
 session.
 
+## How many times each scenario runs
+
+Once per pass. With the defaults that is twice per scenario — once against the
+static attacker, once against the adaptive one — and no more than that.
+
+Repeating a pass at the *same* seed would produce the same transcript, because the
+world state is seeded and decoding is greedy (`do_sample=False`, the kit's own
+setting). Repetition only buys something at a different seed, which reshuffles the
+synthetic world and the attacker's choices. The kit takes that seed from a
+competition config rather than a flag, so the notebook writes one per seed:
+
+```python
+SEEDS = [0, 1, 2]     # config cell; each extra seed is another full pass per split
+```
+
+Three seeds × two splits × two attackers is twelve passes — several GPU hours, and
+worth it only for a number you intend to report as a mean. One seed is the honest
+default for a first run; add seeds once you know the single-seed result.
+
 ## The one check that has to come first
 
 The kit's own warning, and it matters more with a real agent than with the mock:
