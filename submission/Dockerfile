@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # The defense core and the transport in front of it.
 COPY sentinel/ ./sentinel/
+# Optional live trace recorder (enabled with SENTINEL_TRACE_DIR).
+COPY observability/ ./observability/
 COPY submission/app/ ./app/
 
 RUN useradd --create-home --uid 10001 sentinel && chown -R sentinel:sentinel /srv

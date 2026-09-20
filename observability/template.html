@@ -205,7 +205,9 @@ function renderTiles(){
     [v.security_pass ? "contained" : "BREACHED", "attack outcome"],
     [v.utility_pass ? "completed" : "not completed", "user task"],
     [`${counts.ESCALATE||0}`, "human escalations"],
-    [`${adversarial}/${steps}`, "attacker-authored steps"],
+    run.steps.some(s=>s.harness_label==="unknown")
+      ? [`${run.steps.filter(s=>s.decision&&s.decision.intervention!=="ALLOW").length}/${steps}`, "steps intervened on"]
+      : [`${adversarial}/${steps}`, "attacker-authored steps"],
   ];
   el("tiles").innerHTML = tiles.map(([v,k])=>`<div class="tile"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join("");
 }
@@ -316,7 +318,7 @@ function renderDetail(){
       ${chip(d.intervention)}
       <span class="tag">capability <strong>${esc(d.capability)}</strong></span>
       <span class="tag">severity ${esc(d.severity)}</span>
-      ${s.harness_label==="injected"?'<span class="tag bad">attacker-authored (ground truth, not shown to the guard)</span>':'<span class="tag ok">from the user\'s own plan</span>'}
+      ${s.harness_label==="injected"?'<span class="tag bad">attacker-authored (ground truth, not shown to the guard)</span>':s.harness_label==="unknown"?'<span class="tag">live run: authorship ground truth not available to the recorder</span>':'<span class="tag ok">from the user\'s own plan</span>'}
     </div>
     <p><strong>Agent proposed</strong> <code>${esc(d.candidate.tool)}(${esc(JSON.stringify(d.candidate.args))})</code></p>
     ${meter(d)}
@@ -380,7 +382,7 @@ function renderTable(){
     <th class="num">risk</th><th class="num">tol.</th><th class="num">block</th><th class="num">conf.</th><th>top reason codes</th></tr></thead>
     <tbody>${run.steps.map(s=>{const d=s.decision;if(!d)return "";
       return `<tr><td>${s.turn}</td><td>${s.step}</td><td><code>${esc(s.tool)}</code></td>
-      <td>${s.harness_label==="injected"?"attacker":"user"}</td>
+      <td>${s.harness_label==="injected"?"attacker":s.harness_label==="unknown"?"—":"user"}</td>
       <td>${GLYPH[d.intervention]} ${d.intervention}</td>
       <td class="num">${d.risk.risk.toFixed(3)}</td><td class="num">${(d.tolerance??0).toFixed(2)}</td>
       <td class="num">${(d.block_threshold??1).toFixed(2)}</td><td class="num">${d.risk.confidence.toFixed(2)}</td>

@@ -167,6 +167,17 @@ Then show F1 side by side with the scenario it is derived from:
 
 ---
 
+### Which agent is on screen
+
+The benign task (shot 1) and the attack (shot 2) must be **Qwen3-8B runs**, the
+official reference agent — not our scripted agent and not the kit's mock. Record
+them from the Kaggle notebook's output: `try_scenario(..., undefended_first=True)`
+shows the attack succeeding with no defense and failing with ours, and
+`results/dashboard_qwen3.html` is the same dashboard over those runs (the run
+header names the agent). Say on camera that step authorship is unmarked in live
+runs because the recorder does not have the harness's ground truth. Shots 4–6
+(baselines, ablation, known failures) use the scripted agent; say so.
+
 ### 6b · It runs in the organizers' harness (30 s)
 
 ```bash

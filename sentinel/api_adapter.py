@@ -46,6 +46,8 @@ DECISION_NAME = {
 MAX_REASON_CODES = 16
 MAX_EXPLANATION = 500
 MAX_METADATA_BYTES = 4096
+# What the API reports for an action refused by a blocking hard rule (see `_response`).
+HARD_VIOLATION_RISK = 0.95
 
 _BASE_CATALOGUE = ToolCatalogue.load()
 
@@ -277,7 +279,18 @@ def _response(name: str, decision, codes_override=None, explanation_override=Non
             ordered.append(code)
     explanation = (explanation_override or decision.reason or "")[:MAX_EXPLANATION]
 
+    # The guard's score is P(this action was induced by someone other than the
+    # user), so a user who asks for an unprovisioned tool in their own words
+    # scores near zero and is still refused by a hard rule. The API's risk_score
+    # is read as "how likely is this action illegitimate", and a hard policy
+    # violation is that with certainty. Report it so; the likelihood the guard
+    # actually computed stays in the metadata and in the trace.
+    induced = min(1.0, max(0.0, decision.risk.risk))
+    violated = name == "block" and any(r.floor == Intervention.BLOCK for r in decision.hard_rules)
+    reported = max(induced, HARD_VIOLATION_RISK) if violated else induced
+
     metadata = {
+        "induced_likelihood": round(induced, 4),
         "capability": decision.capability,
         "severity": decision.severity.name,
         "tolerance": round(decision.tolerance, 3),
@@ -291,11 +304,12 @@ def _response(name: str, decision, codes_override=None, explanation_override=Non
         "rewrite_strategy": decision.rewrite_strategy,
     }
     if len(json.dumps(metadata)) > MAX_METADATA_BYTES:
-        metadata = {"capability": decision.capability, "severity": decision.severity.name}
+        metadata = {"induced_likelihood": round(induced, 4), "capability": decision.capability,
+                    "severity": decision.severity.name}
 
     response = {
         "decision": name,
-        "risk_score": round(min(1.0, max(0.0, decision.risk.risk)), 4),
+        "risk_score": round(reported, 4),
         "confidence": round(min(1.0, max(0.0, decision.risk.confidence)), 4),
         "reason_codes": ordered[:MAX_REASON_CODES],
         "explanation": explanation or None,

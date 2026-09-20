@@ -19,6 +19,17 @@ from sentinel.api_adapter import decide as adapter_decide
 
 log = logging.getLogger("sentinel.defense")
 
+# Observability for runs the harness drives (the real Qwen3-8B agent included):
+# with SENTINEL_TRACE_DIR set, every run is recorded in the dashboard's trace
+# format. Recording never feeds back into a decision.
+TRACE_DIR = os.environ.get("SENTINEL_TRACE_DIR", "").strip()
+if TRACE_DIR:
+    from observability.live import LiveRecorder
+
+    adapter_decide = LiveRecorder(
+        TRACE_DIR, agent_label=os.environ.get("SENTINEL_AGENT_LABEL", "external agent (v1 API)")
+    ).decide
+
 app = FastAPI(title="SENTINEL defense", docs_url=None, redoc_url=None, openapi_url=None)
 
 

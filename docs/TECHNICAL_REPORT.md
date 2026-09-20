@@ -293,11 +293,15 @@ uv run sentinel eval public --defense-url http://127.0.0.1:8099   # in the kit
 
 Dependencies: Python 3.10+ and PyYAML for the defense and simulator; FastAPI,
 uvicorn and pydantic additionally for the submission service. No network, no
-model API, no GPU.
-**External models and datasets used: none.** The reference agent is a
-deterministic simulated model (`simulator/agent.py`); an optional adapter for a
-local OpenAI-compatible endpoint is documented in the README but is not used
-for any number in this report. All records are fictional.
+model API, no GPU — except for the Qwen3-8B evaluation in §7.7.
+
+**External models and datasets.** The defense uses none; its decisions are
+deterministic. The agent it protects is the official reference agent,
+`Qwen/Qwen3-8B`, declared in §7.7. Sections 7.1–7.5 (library, baselines,
+calibration, ablation) and §8 use our scripted simulator agent
+(`simulator/agent.py`), and §7.6 uses the kit's mock agent, because both are
+deterministic and free to re-run; each table says which agent produced it. All
+records are fictional.
 
 ---
 
@@ -498,6 +502,29 @@ deliberately and record it here rather than reporting only the higher number.
 
 ---
 
+## 7.7 The official reference agent: Qwen3-8B
+
+**How we ran the reference agent.** `Qwen/Qwen3-8B`, open weights, self-hosted
+in a Kaggle notebook on 2× T4 (no inference API), driven by the organizers'
+simulator. Weights in fp16 sharded across the two cards (`device_map=auto`,
+13 GiB cap per card — 16-bit weights do not fit one 16 GB T4, and Turing has no
+bfloat16 cores), loaded once per process instead of once per scenario. Unchanged
+from the kit: system prompt (sha256 prefix `d7372b6937e87c8a`), tool cards,
+message construction, greedy decoding, `max_new_tokens=768`, thinking off,
+12 000-character context, `parse_action`. No safety instruction is added to the
+agent. Patch: `kaggle/qwen_runtime.py`; procedure: [QWEN3_AGENT.md](QWEN3_AGENT.md).
+
+Unlike the mock, this agent gets no reference plan, and a run can end in
+`model_error` or `max_steps` — the agent failing, not the defense blocking.
+The collector reports those separately.
+
+> **TO FILL from the Kaggle run** (`results/RESULTS_QWEN3.md` in the notebook's
+> output): the four-pass table, the per-scenario failure list split into
+> *agent failed* vs *defense blocked*, the `allow_all` reachability result for
+> each scenario shown in the video, and whether `enterprise_memory_poison`
+> completes when the agent has to search for the MSA itself (§7.6, the false
+> block under the mock). Do not submit with this box still here.
+
 ## 8. Failure analysis
 
 We attacked our own defense. Two probes succeed and are shipped as runnable
@@ -648,8 +675,9 @@ runs in one command and fails in the open.
    failure class provenance cannot see.
 4. **Cross-turn mandate composition** so turn *n* inherits the intersection of
    prior authority rather than re-deriving it inside a contaminated context.
-5. **A real model in the loop** (the optional Qwen3-8B adapter) to replace the
-   simulated agent's clean tool calls with messy ones.
+5. **The ablation and calibration studies under Qwen3-8B** rather than the
+   scripted agent, so the messy tool calls of a real model are in those numbers
+   too (§7.7 covers only the headline evaluation).
 6. **AgentDojo**, to test whether these signals transfer off our own library.
 
 ---

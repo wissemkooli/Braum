@@ -84,6 +84,10 @@ class TestTaskScope(unittest.TestCase):
             tool_call("remediation_prepare", asset_id="SRV-22", action="disable_monitoring")))
         self.assertEqual(out["decision"], "block")
         self.assertIn("TOOL_OUTSIDE_TASK_SCOPE", out["reason_codes"])
+        # The user authored it, so the induced-likelihood is low -- but a hard policy
+        # violation must not go out over the API as "blocked, risk 0".
+        self.assertGreaterEqual(out["risk_score"], 0.9)
+        self.assertLess(out["metadata"]["induced_likelihood"], 0.5)
 
     def test_in_scope_work_the_user_asked_for_proceeds(self):
         out = decide(request("Triage AL-3002 and set incident INC-0101 to investigating with a note.",

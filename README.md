@@ -19,12 +19,15 @@ validation scenarios, static and adaptive attackers, kit's mock agent):
 
 | split | BTU ↑ | ASR ↓ | canary leaks | false blocks | official score |
 |---|---|---|---|---|---|
-| public | **1.000** | **0.000** | **0** | 1 escalation | **0.9943** |
+| public | **1.000** | **0.000** | **0** | 2 reads, 1 scenario | **0.9943** |
 | validation | **1.000** | **0.000** | **0** | **0** | **1.0000** |
 
-Every attack contained, every task completed, nothing classified leaked —
-and the same numbers under the adaptive mutation attacker. That beats their
-`provenance` baseline (0.988 / 0.858) and sits alongside `heuristic_risk`.
+Every attack contained, every benign task completed, nothing classified leaked —
+and the same numbers under the adaptive mutation attacker. The one blemish is
+`enterprise_memory_poison`: contained, but the defense also blocks the read the
+user wanted, because the attacker named that record first. That beats their
+`provenance` baseline (0.988 / 0.858) and sits just under `heuristic_risk` on
+the public split (0.9986), level with it on validation.
 Details, and the five real defects this integration exposed in our defense:
 [docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md).
 
@@ -56,7 +59,7 @@ uv run sentinel eval public --defense-url http://127.0.0.1:8080
 
 ```bash
 pip install pyyaml                 # the only dependency
-python3 run_tests.py               # 38 tests, standard library only
+python3 run_tests.py               # 53 tests, standard library only
 
 ./bin/sentinel suite               # every scenario
 ./bin/sentinel run --scenario scenarios/public/04_agentdojo_deception.yaml
@@ -64,7 +67,8 @@ python3 run_tests.py               # 38 tests, standard library only
 ./bin/sentinel dashboard && xdg-open observability/dashboard.html
 ```
 
-No network, no model API, no GPU. Python 3.10+.
+No network, no model API, no GPU for any of the above. Python 3.10+. The
+Qwen3-8B evaluation is the part that needs a GPU: [docs/QWEN3_AGENT.md](docs/QWEN3_AGENT.md).
 
 ---
 
@@ -188,6 +192,11 @@ risk, and the committed effect — to a JSONL trace, as the run happens.
 ./bin/sentinel dashboard                        # self-contained HTML, no server
 ```
 
+Runs driven by the organizers' harness — the Qwen3-8B agent included — are
+recorded in the same format by the defense service itself
+(`SENTINEL_TRACE_DIR=...`, see [docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md)),
+so the same two readers work on them.
+
 The dashboard shows the sealed mandate, a timeline, a risk meter with that
 severity's tolerance and block thresholds marked, an evidence waterfall that
 adds up to the score, and a provenance panel that highlights **the exact span
@@ -236,8 +245,9 @@ submission/           the deployable v1 defense service (FastAPI + Docker)
   sentinel-submission.yaml
 
 observability/        replay.py, template.html, build.py
+  live.py             records harness-driven (Qwen3-8B) runs in the same trace format
 docs/                 technical report, safety statement, results, video script
-tests/                38 tests, including the no-oracle isolation test
+tests/                53 tests, including the no-oracle isolation test
 ```
 
 ## Scenario-specific hard-coding: not just avoided, enforced
@@ -261,11 +271,18 @@ this"`.
 
 ## Declarations
 
-**External models: none. External datasets: none.** The reference agent is a
-deterministic simulated model (`simulator/agent.py`). An optional adapter for a
-local OpenAI-compatible endpoint (e.g. Qwen3-8B on `127.0.0.1:8080`) is
-included but is not used for any number in this repository. All records are
-fictional; nothing touches a real system.
+**The defense uses no external model and no external dataset.** Its decisions
+are deterministic.
+
+**The agent being defended is the official reference agent, `Qwen/Qwen3-8B`**,
+run through the organizers' simulator with their system prompt, tool cards and
+greedy decoding unchanged, self-hosted on a Kaggle GPU (no inference API). How
+it is run — precision, sharding, weights loaded once per process — is declared
+in [docs/QWEN3_AGENT.md](docs/QWEN3_AGENT.md). Numbers labelled *mock* come from
+the kit's deterministic mock agent, and the numbers in
+[docs/RESULTS.md](docs/RESULTS.md) (ablation, calibration, known failures) come
+from our own scripted simulator agent in `simulator/agent.py`; each table says
+which. All records are fictional; nothing touches a real system.
 
 ---
 

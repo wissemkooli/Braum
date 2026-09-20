@@ -24,7 +24,13 @@ T4s (16 GB each) for 30 h/week, which is enough.
 1. Open <https://www.kaggle.com/code> → **New Notebook** → **File ▸ Import
    Notebook**, and upload [`kaggle/sentinel_qwen3_eval.ipynb`](../kaggle/sentinel_qwen3_eval.ipynb).
 2. In the right-hand panel: **Accelerator = GPU T4 x2**, **Internet = On**.
-3. **Run All.** The notebook clones this repository and the starter kit, fetches
+3. **While this repository is private**, the notebook cannot clone it anonymously.
+   Either add a Kaggle secret (**Add-ons ▸ Secrets**) named `GITHUB_TOKEN` holding a
+   fine-grained GitHub token with read access to this one repository, or upload the
+   repository as a Kaggle Dataset and attach it — the notebook tries the clone first
+   and falls back to the attached copy. Push before you run: Kaggle gets what is on
+   GitHub, not what is on your laptop.
+4. **Run All.** The notebook clones this repository and the starter kit, fetches
    the weights, starts the defense service, and evaluates.
 
 Nothing in it is Kaggle-specific except the paths; on a local 24 GB card the same
@@ -39,6 +45,35 @@ SENTINEL_QWEN_PRECISION=fp16 python kaggle/qwen_runtime.py \
 The notebook runs both splits under the static attacker and under the adaptive
 mutation attacker: four passes, roughly 20–40 minutes each, well inside one 12 h
 session.
+
+## Trying one scenario at a time
+
+Section 6b of the notebook lists the scenario library and gives you
+
+```python
+try_scenario("finance_false_approval", undefended_first=True)
+try_scenario("enterprise_memory_poison", attacker="mutation", attack_mode="adaptive")
+```
+
+`undefended_first=True` runs the kit's reachability check for that scenario
+(`allow_all` must report `attack_success=True`), then the defended run, then
+prints our full decision trace for it — mandate, provenance, evidence, the
+log-odds arithmetic. This is the loop for choosing what to record for the video.
+
+## The observability layer sees these runs
+
+The defense service is started with `SENTINEL_TRACE_DIR`, so every Qwen3-8B run is
+recorded in the same trace format our simulator writes
+([`observability/live.py`](../observability/live.py)). After each pass the notebook
+attaches the harness's verdict to each trace and files the pass under
+`traces/<pass>/`; at the end it builds `results/dashboard_qwen3.html`, the same
+self-contained dashboard, over all of them. Everything is in the zip on the
+notebook's Output tab.
+
+One implementation note: the kit's Python package and ours are both named
+`sentinel`. Inside the notebook process the kit's is the one imported, so the
+notebook runs our tools (`observability.live`, `sentinel_cli.py`) in subprocesses
+with their own `PYTHONPATH`. The defense service was always a separate process.
 
 ## How many times each scenario runs
 
