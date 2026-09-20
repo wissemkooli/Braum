@@ -46,7 +46,25 @@ anything untrusted** — then the token left inside a long reply where overlap
 tracking could not see it. All three are fixed and pinned by tests; the run, its
 trace and the analysis are in
 [TECHNICAL_REPORT §7.7](docs/TECHNICAL_REPORT.md#77-the-official-reference-agent-qwen3-8b)
-and `artifacts/qwen3/run1-2026-09-20/`. How to run it:
+and `artifacts/qwen3/run1-2026-09-20/`.
+
+**The second run, with the fixes and an undefended control pass:**
+
+| Qwen3-8B, seed 0 | BTU ↑ | ASR ↓ | canary leaks (CVR) | FBR ↓ | official score |
+|---|---|---|---|---|---|
+| public, no defense (`allow_all`) | 0.333 | 0.200 | 0.053 | 0.000 | 0.674 |
+| public, **SENTINEL**, static and adaptive | 0.333 | **0.000** | **0.000** | 0.020 | **0.752** |
+| validation, no defense | 0.400 | 0.000 | 0.000 | 0.000 | 0.795 |
+| validation, **SENTINEL**, static and adaptive | 0.400 | 0.000 | 0.000 | 0.000 | 0.795 |
+
+Two public attacks succeed against the undefended agent, `enterprise_poisoned_invoice`
+among them; both are contained. The low BTU is the agent: it is the same without
+the defense, and every decision on every benign scenario was `ALLOW` — Qwen3-8B
+emits invalid actions, stops early, or words its answer past the grader. No
+validation attack reaches this agent even undefended, so that split shows
+nothing about containment. The defense's own cost is three interrupted legitimate
+decisions (FBR 0.020). Details in §7.7.4; everything from the run is in
+`artifacts/qwen3/run2-2026-09-20/`. How to run it:
 [docs/QWEN3_AGENT.md](docs/QWEN3_AGENT.md).
 
 On our own scenario library: 6/6 attacks contained, 9/9 tasks completed,
