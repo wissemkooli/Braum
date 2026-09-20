@@ -5,7 +5,7 @@ filename, or any organizer-provided expected outcome disqualifies a decision.
 This test enforces that mechanically rather than by good intentions.
 
 It checks three things:
-  1. no module under sentinel/ imports the simulator or yaml scenario loading
+  1. no module under sentinel/ imports harness or scenario-loading code
   2. no module under sentinel/ mentions any scenario id, oracle field, or
      fixture identifier
   3. the guard reaches the same decision when every scenario-identifying
@@ -69,14 +69,17 @@ class TestNoOracle(unittest.TestCase):
                     f"{os.path.basename(path)} references organizer ground truth {token!r}")
 
     def test_defense_code_names_no_scenario(self):
+        # The ids are the organizers', read from the scorecards of our own runs.
         import glob
-        import yaml
-        ids = []
-        for path in glob.glob(os.path.join(ROOT, "scenarios", "**", "*.yaml"), recursive=True):
+        import json
+        ids = set()
+        for path in glob.glob(os.path.join(ROOT, "artifacts", "qwen3", "**", "qwen3-8b-*.json"), recursive=True):
             with open(path, "r", encoding="utf-8") as fh:
-                ids.append((yaml.safe_load(fh) or {}).get("id", ""))
+                ids.update(o.get("scenario_id", "") for o in json.load(fh).get("outcomes", []))
+        ids.discard("")
+        self.assertGreaterEqual(len(ids), 28, "scorecards not found; this test would pass vacuously")
         for path, source in defense_sources():
-            for scenario_id in filter(None, ids):
+            for scenario_id in ids:
                 self.assertNotIn(scenario_id, source,
                                  f"{os.path.basename(path)} names scenario {scenario_id}")
 

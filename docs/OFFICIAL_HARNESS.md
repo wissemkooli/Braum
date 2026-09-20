@@ -84,9 +84,8 @@ uv run sentinel eval public     --defense-url http://127.0.0.1:8099 \
 
 ## What the integration changed, and why
 
-Running against the organizers' harness found five real defects that our own
-simulator could not have surfaced — and running the real agent through it found
-three more (technical report §7.7). They are worth reading as failure analysis,
+Running against the organizers' harness found five real defects — and running
+the real agent through it found three more (technical report §7.1). They are worth reading as failure analysis,
 because each one is a class of mistake rather than a typo.
 
 ### 1. The user is not the top of the trust lattice (`TOOL_OUTSIDE_TASK_SCOPE`)
@@ -149,14 +148,13 @@ no difference in provenance. What *does* distinguish them is whether the
 content **instructed** the read. Target-provenance weight is damped for
 `READ_ONLY` actions *only while nothing in the content dictated the call*, so
 `UNTRUSTED_ACTION_DICTATION` is the discriminator. Damping every read took FBR
-to zero but let the BIPIA restricted read through at 0.721; we kept the block
-and the 0.023 (technical report §7.6.3).
+to zero but lets a content-dictated read of a restricted record through under
+tolerance; we kept the block and the 0.023 (technical report §7.2.3).
 
 ## Seeing these runs in our own observability layer
 
-The harness owns the loop, so our simulator's tracer is not in it. Start the
-service with `SENTINEL_TRACE_DIR` set and every run is recorded in the same
-trace format the simulator writes (`observability/live.py`):
+The harness owns the loop. Start the service with `SENTINEL_TRACE_DIR` set and
+every run is recorded as a decision trace (`observability/live.py`):
 
 ```bash
 cd submission
@@ -192,15 +190,6 @@ The adapter rebuilds the guard on every request, but it is **no longer
 stateless**, and the reason is a failure: the harness sends the last 12
 conversation items, and under Qwen3-8B a retry loop scrolled a poisoned document
 out of that window, after which the defense allowed the call it had refused
-twelve times (technical report §7.7.2). The adapter now keeps, per `run_id`, the
+twelve times (technical report §7.1.2). The adapter now keeps, per `run_id`, the
 labelled content it has already been sent — inputs only, never conclusions — and
 falls back to `history_digest.least_trusted_seen` when that memory is cold.
-
-## Our own simulator is still here, and still worth having
-
-`simulator/` predates this integration and remains the place where the
-observability layer, the ablation study and the known-failure probes live. It
-does things the official harness does not: it shows the decision trace as the
-run happens, it can turn individual signal families off, and it ships attacks
-that defeat us. The official harness answers *how well does this score*; the
-local one answers *why did it decide that, and when does it break*.

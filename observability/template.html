@@ -336,7 +336,6 @@ function renderDetail(){
     ${s.human_review?`<p style="margin-top:12px"><span class="tag ${s.human_review.approved?'ok':'bad'}">human ${s.human_review.approved?"approved":"denied"}</span> <span class="note">(${esc(s.human_review.mode)})</span></p>`:""}
     ${s.blocked?`<p class="note" style="margin-top:8px">The environment never saw this call.</p>`:""}
     ${(s.effects||[]).length?`<p style="margin-top:8px">Committed effect: ${s.effects.map(e=>`<span class="tag">${esc(e.effect)}</span>`).join("")}</p>`:""}
-    ${(s.hijacked||[]).length?`<p style="margin-top:8px" class="note">After this step the agent queued ${s.hijacked.length} instruction(s) it found inside the content it just read.</p>`:""}
     ${s.response?`<p style="margin-top:12px"><strong>Agent response:</strong> ${esc(s.response)}</p>`:""}`;
 }
 

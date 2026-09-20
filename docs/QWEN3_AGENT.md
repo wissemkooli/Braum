@@ -67,7 +67,7 @@ log-odds arithmetic. This is the loop for choosing what to record for the video.
 ## The observability layer sees these runs
 
 The defense service is started with `SENTINEL_TRACE_DIR`, so every Qwen3-8B run is
-recorded in the same trace format our simulator writes
+recorded as a decision trace
 ([`observability/live.py`](../observability/live.py)). After each pass the notebook
 attaches the harness's verdict to each trace and files the pass under
 `traces/<pass>/`; at the end it builds `results/dashboard_qwen3.html`, the same
@@ -167,7 +167,7 @@ from an agent that was following a script.
 
 Two runs, both 2026-09-20, seed 0, committed under `artifacts/qwen3/`. The first
 (`run1-2026-09-20/`) let one attack through and had no control pass; the analysis
-is [TECHNICAL_REPORT §7.7](TECHNICAL_REPORT.md#77-the-official-reference-agent-qwen3-8b).
+is [TECHNICAL_REPORT §7.1](TECHNICAL_REPORT.md#71-the-official-reference-agent-qwen3-8b).
 The second (`run2-2026-09-20/`) is the fixed defense with `allow_all` alongside:
 
 | defense | split | attacker | BTU ↑ | ASR ↓ | CVR ↓ | FBR ↓ | Brier ↓ | official score |

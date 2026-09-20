@@ -1,19 +1,17 @@
 """Record the dashboard's trace for runs driven through the v1 HTTP API.
 
-Our own simulator writes the trace as it runs, because it owns the loop. When
-the organizers' harness owns the loop -- which is every run against the real
-Qwen3-8B reference agent -- the defense only ever sees one `DefenseRequest` at
-a time, and the adapter deliberately rebuilds the guard from each request. A
-tracer handed to it directly would re-announce the mandate and every
-observation at every step.
+The organizers' harness owns the loop in every run against the Qwen3-8B
+reference agent, so the defense only ever sees one `DefenseRequest` at a time,
+and the adapter deliberately rebuilds the guard from each request. A tracer
+handed to it directly would re-announce the mandate and every observation at
+every step.
 
-This recorder sits between the two. Each request is decided with an in-memory
+This recorder handles that. Each request is decided with an in-memory
 tracer, and only what is *new* for that run is appended to
 `<trace_dir>/<run_id>.jsonl`: the mandate when it changes (a new turn),
 observations not yet recorded, the agent's intent, the full decision record,
 and -- from the next request's history digest -- what the harness did with the
-previous decision. The file is the same format the simulator writes, so
-`sentinel replay` and `sentinel dashboard` read it unchanged.
+previous decision. `sentinel replay` and `sentinel dashboard` read the file.
 
 It is observability only. Nothing recorded here is read back by the decision
 path, and the run id is used as a filename and a label, never as an input.

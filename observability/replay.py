@@ -98,16 +98,11 @@ def render(path: str, width: int = 100) -> None:
             print(f"      {_c('HUMAN', 'ESCALATE')} {'approved' if e['approved'] else 'denied'} "
                   f"({e['mode']})")
 
-        elif kind == "agent_hijacked":
-            for f in e["followed"]:
-                print(f"      {_c('agent queued an instruction it found in content:', 'warn')} "
-                      f"{f['tool']}({json.dumps(f['args'])[:90]})")
-
         elif kind == "effect":
             print(f"      {_c('EFFECT', 'dim')} {e['effect']} committed to the environment")
 
         elif kind == "blocked":
-            print(f"      {_c('NOT EXECUTED', e['intervention'])}")
+            print(f"      {_c('NOT EXECUTED', e.get('intervention', 'BLOCK'))}")
 
         elif kind == "final_response":
             print(f"\n  {_c('AGENT RESPONDS', 'bold')}")

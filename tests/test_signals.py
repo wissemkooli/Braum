@@ -119,11 +119,6 @@ class TestCapabilityModel(unittest.TestCase):
         self.assertFalse(spec.known)
         self.assertEqual(spec.consequence, Consequence.IRREVERSIBLE)
 
-    def test_every_simulator_tool_is_modelled(self):
-        from simulator.tools import REGISTRY
-        missing = [t for t in REGISTRY if t not in CAT]
-        self.assertEqual(missing, [], f"tools the defense has no model for: {missing}")
-
 
 if __name__ == "__main__":
     unittest.main()

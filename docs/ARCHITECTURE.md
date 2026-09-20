@@ -3,8 +3,8 @@
 ## The one rule
 
 ```
-simulator/  →  may import  →  sentinel/
-sentinel/   →  may NOT import anything from simulator/ or scenarios/
+submission/, observability/  →  may import  →  sentinel/
+sentinel/   →  may NOT import harness, scenario or scoring code
 ```
 
 The defense is a library that could be lifted out of this repository and
@@ -73,24 +73,23 @@ can never be accepted on weaker grounds than an allow.
 
 | you want to… | edit |
 |---|---|
-| add a tool | `sentinel/tool_model.yaml` (+ an implementation in `simulator/tools.py`) |
+| add a tool | `sentinel/tool_model.yaml` (a tool absent from it gets an inferred spec) |
 | change how strict a domain is | `PROFILES` in `sentinel/policy.py` |
 | decide irreversible actions need no human | `confirm_irreversible` in the profile |
 | add a detection signal | a function in `sentinel/signals.py` + a weight in `risk.py` |
 | add a rewrite strategy | `sentinel/rewrite.py`, then add it to `candidates()` |
-| add a scenario | a YAML file under `scenarios/`; nothing else changes |
-| add a baseline to compare against | `simulator/baselines.py` |
 
 ## Extension points
 
-**A real model.** `simulator/agent.py` is a drop-in: anything that produces
-`CandidateAction` objects and consumes tool results works. The guard's
-interface is `begin_turn` / `observe` / `review` / `note_effect`.
+**A different agent.** Anything that produces `CandidateAction` objects works.
+The guard's interface is `begin_turn` / `observe` / `review` / `note_effect`;
+`api_adapter.py` drives it from the official v1 request, which is how Qwen3-8B
+reaches it.
 
 **A different environment.** The guard needs only `(source_ref, text, trust,
 sensitivity)` per observation. Point `observe()` at a real tool bus and the
 defense works unchanged.
 
 **Learned weights.** `risk.WEIGHTS` is a flat dict of log-odds priors. Fitting
-them needs a corpus larger than nine scenarios — see TECHNICAL_REPORT § 4.6 for
+them needs a corpus larger than 28 scenarios — see TECHNICAL_REPORT § 4.6 for
 why we did not.

@@ -46,7 +46,7 @@ def structure(events: List[dict]) -> dict:
                 "turn": e["turn"], "step": e["step"], "tool": e["tool"], "args": e["args"],
                 "harness_label": e["harness_label"], "decision": None, "human_review": None,
                 "effects": [], "observations": [], "blocked": False, "response": None,
-                "hijacked": [], "error": None,
+                "error": None,
             }
             run["steps"].append(current)
         elif kind == "decision" and current is not None:
@@ -63,8 +63,6 @@ def structure(events: List[dict]) -> dict:
             run["observations"][e["obs_id"]] = e
             if current is not None:
                 current["observations"].append(e["obs_id"])
-        elif kind == "agent_hijacked" and current is not None:
-            current["hijacked"] = e["followed"]
         elif kind == "final_response" and current is not None:
             current["response"] = e["content"]
         elif kind == "verdict":
