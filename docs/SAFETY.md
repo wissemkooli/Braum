@@ -56,7 +56,17 @@ Stated plainly, with runnable evidence where we have it.
    user asking for something in policy — we originally missed this family
    entirely (technical report §7.6.1), and the mechanism that covers it is
    configuration, not inference.
-8. **The model, the sandbox, and the supply chain.** No fine-tuning, no
+8. **History it was never shown, after a restart.** The harness sends the
+   defense a 12-item window. Under Qwen3-8B that window once scrolled a
+   poisoned document out of view and a restricted token leaked (technical
+   report §7.7.2). The service now remembers what it has been sent per run, but
+   in process memory: restart it mid-run and it knows only *that* the turn was
+   exposed, not *to what*.
+9. **Secrets that do not look like secrets.** Verbatim credential tracing needs
+   a 16+ character token mixing letters and digits in a record labelled
+   CONFIDENTIAL or above. A passphrase of ordinary words, or a secret the agent
+   describes instead of quoting, passes it.
+10. **The model, the sandbox, and the supply chain.** No fine-tuning, no
    guarantee about model internals, no protection if the tool catalogue itself
    is wrong or malicious.
 
@@ -139,7 +149,11 @@ make an agent safe to run unattended on consequential work, and it should be
 deployed alongside API-layer least privilege, human review of irreversible
 actions, and auditing of the traces it produces.
 
-The claim we are willing to defend is narrow and testable: **on this library,
-with a deliberately credulous agent, provenance-based decisions contain every
-attack while completing every task, and the conditions under which that stops
-being true are documented, runnable, and in this repository.**
+The claim we are willing to defend is narrow and testable: **with scripted,
+credulous agents, on our library and on the organizers', provenance-based
+decisions contain every attack while completing every task. With the real
+reference agent the first run leaked a restricted credential; we publish that
+run, its cause and the fix, and we do not claim the fixed defense is clean under
+Qwen3-8B until the re-run in the technical report says so. The conditions under
+which the defense stops working are documented, runnable, and in this
+repository.**

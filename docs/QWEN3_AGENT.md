@@ -43,8 +43,12 @@ SENTINEL_QWEN_PRECISION=fp16 python kaggle/qwen_runtime.py \
 ```
 
 The notebook runs both splits under the static attacker and under the adaptive
-mutation attacker: four passes, roughly 20–40 minutes each, well inside one 12 h
-session.
+mutation attacker, plus an **undefended control** (`allow_all`) over both splits:
+six passes, roughly 20–40 minutes each, well inside one 12 h session. The control
+is not optional (`RUN_CONTROL`). Qwen3-8B fails some tasks and ignores some
+injections on its own, and our first run, which skipped it, produced a table
+nobody could interpret: BTU 0.333 with every failed benign task fully allowed,
+ASR 0.000 over attacks the agent mostly never attempted.
 
 ## Trying one scenario at a time
 
@@ -135,7 +139,11 @@ python kaggle/qwen_runtime.py --selftest   # patch targets exist, prompt hash, m
 python kaggle/collect_scorecards.py results/ --markdown results/RESULTS_QWEN3.md
 ```
 
-The table is the headline; the list under each split is the part to read. A line
+The table is the headline. Under it, when the control pass is present, comes
+*agent alone vs defended* for every scenario, ending in the two lines the report
+needs: how many attacks succeed against the undefended agent and how many of
+those we contain, and how many benign tasks the agent completes alone and how
+many of those survive the defense. Then the list under each split. A line
 like
 
 ```

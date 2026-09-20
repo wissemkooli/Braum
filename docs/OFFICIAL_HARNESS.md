@@ -84,8 +84,9 @@ uv run sentinel eval public     --defense-url http://127.0.0.1:8099 \
 
 ## What the integration changed, and why
 
-Running against the organizers' harness found four real defects that our own
-simulator could not have surfaced. They are worth reading as failure analysis,
+Running against the organizers' harness found five real defects that our own
+simulator could not have surfaced — and running the real agent through it found
+three more (technical report §7.7). They are worth reading as failure analysis,
 because each one is a class of mistake rather than a typo.
 
 ### 1. The user is not the top of the trust lattice (`TOOL_OUTSIDE_TASK_SCOPE`)
@@ -145,10 +146,11 @@ Two benign investigations were escalated for following a reference found in
 content — an analyst triaging an alert looking up the domain the alert names.
 Provenance cannot distinguish that from a malicious redirect, because there is
 no difference in provenance. What *does* distinguish them is whether the
-content **instructed** the read. Target-provenance weight is now damped for
-`READ_ONLY` actions, leaving `UNTRUSTED_ACTION_DICTATION` as the discriminator,
-and the flow layer to catch whatever is done with what was read. FBR went to
-zero and the BIPIA restricted read is still blocked.
+content **instructed** the read. Target-provenance weight is damped for
+`READ_ONLY` actions *only while nothing in the content dictated the call*, so
+`UNTRUSTED_ACTION_DICTATION` is the discriminator. Damping every read took FBR
+to zero but let the BIPIA restricted read through at 0.721; we kept the block
+and the 0.023 (technical report §7.6.3).
 
 ## Seeing these runs in our own observability layer
 
@@ -183,10 +185,16 @@ that ground truth belongs to the harness.
 | `policy_context.allowed_tools` | `GuardConfig.allowed_tools` → `TOOL_OUTSIDE_TASK_SCOPE` |
 | `policy_context.consequential_tools` | `ToolSpec.requires_confirmation` → `CONFIRMATION_REQUIRED` |
 | `history_digest.confirmations_granted` | `api_adapter.action_digest`, replicating their hash |
+| `history_digest.least_trusted_seen` | `ContextLedger.exposed_elsewhere` — exposure we can no longer see |
+| `conversation` (last 12 items only) | `api_adapter.RunMemory` |
 
-The adapter is stateless: every request rebuilds the guard from the request
-itself, so two concurrent runs cannot contaminate each other and a replayed
-request always yields the same decision.
+The adapter rebuilds the guard on every request, but it is **no longer
+stateless**, and the reason is a failure: the harness sends the last 12
+conversation items, and under Qwen3-8B a retry loop scrolled a poisoned document
+out of that window, after which the defense allowed the call it had refused
+twelve times (technical report §7.7.2). The adapter now keeps, per `run_id`, the
+labelled content it has already been sent — inputs only, never conclusions — and
+falls back to `history_digest.least_trusted_seen` when that memory is cold.
 
 ## Our own simulator is still here, and still worth having
 

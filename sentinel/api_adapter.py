@@ -16,15 +16,22 @@ needs:
     policy_context   ->  the operator's tool declarations and policy rules
     history_digest   ->  prior tool calls, confirmations, interception count
 
-Each call rebuilds the guard from the request. That is deliberate: the service
-holds no state between requests, so two concurrent runs cannot contaminate
-each other, and a replayed request always produces the same decision.
+Each call rebuilds the guard from scratch, so no *decision* state survives a
+request. What does survive is a per-run record of content the harness has
+already shown us (`RunMemory`). The harness sends a sliding window of the
+conversation, not the whole of it; a defense that reasons only over the window
+forgets the poisoned document as soon as enough noise has scrolled past, and an
+attacker -- or just an agent stuck in a retry loop -- can supply that noise.
+We learned this from a Qwen3-8B run in which exactly that happened. Runs are
+keyed by `run_id`, so concurrent runs still cannot contaminate each other.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import threading
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
 
 from .capability import (
@@ -50,6 +57,48 @@ MAX_METADATA_BYTES = 4096
 HARD_VIOLATION_RISK = 0.95
 
 _BASE_CATALOGUE = ToolCatalogue.load()
+
+
+# ------------------------------------------------------------------ run memory
+class RunMemory:
+    """Content already received for a run, kept after it leaves the window.
+
+    Stores what the harness sent and the labels it sent with it -- nothing the
+    guard concluded. Bounded in both directions, and a run whose step counter
+    goes backwards is a new run reusing an id, so its memory is dropped.
+    """
+
+    MAX_RUNS = 256
+    MAX_ITEMS = 400
+
+    def __init__(self):
+        self._runs: "OrderedDict[str, dict]" = OrderedDict()
+        self._lock = threading.Lock()
+
+    def recall(self, run_id: str, step: int, items: List[tuple]) -> List[tuple]:
+        """Merge this request's labelled items in; return everything known, in order."""
+        with self._lock:
+            run = self._runs.get(run_id)
+            if run is None or step < run["step"]:
+                run = {"step": step, "items": OrderedDict()}
+            run["step"] = step
+            for item in items:
+                key = hashlib.sha256(repr(item[:2]).encode()).digest()
+                run["items"].setdefault(key, item)
+            while len(run["items"]) > self.MAX_ITEMS:
+                run["items"].popitem(last=False)
+            self._runs[run_id] = run
+            self._runs.move_to_end(run_id)
+            while len(self._runs) > self.MAX_RUNS:
+                self._runs.popitem(last=False)
+            return list(run["items"].values())
+
+    def clear(self) -> None:
+        with self._lock:
+            self._runs.clear()
+
+
+MEMORY = RunMemory()
 
 
 # ---------------------------------------------------------------- action digest
@@ -208,6 +257,7 @@ def decide(request: dict, tracer: Optional[Tracer] = None) -> dict:
     guard.begin_turn(str(request.get("user_goal") or ""),
                      turn_index=int(history.get("turn_index") or 0))
 
+    window = []
     for item in request.get("conversation") or []:
         role = str(item.get("role", "tool"))
         if role not in OBSERVED_ROLES:
@@ -215,7 +265,11 @@ def decide(request: dict, tracer: Optional[Tracer] = None) -> dict:
         trust, sensitivity, ref, kind = _labels(
             item.get("provenance_ids") or [], digest_index,
             ROLE_DEFAULT_TRUST.get(role, Trust.UNTRUSTED_EXTERNAL))
-        guard.observe(source_ref=ref, text=str(item.get("content") or ""), trust=trust,
+        window.append((ref, str(item.get("content") or ""), trust, sensitivity, kind))
+    run_id = str(request.get("run_id") or "")
+    for ref, text, trust, sensitivity, kind in (
+            MEMORY.recall(run_id, step, window) if run_id else window):
+        guard.observe(source_ref=ref, text=text, trust=trust,
                       sensitivity=sensitivity, source_kind=kind, step=step)
 
     observation = request.get("observation")
@@ -224,6 +278,12 @@ def decide(request: dict, tracer: Optional[Tracer] = None) -> dict:
             observation.get("provenance_ids") or [], digest_index, Trust.TRUSTED_INTERNAL)
         guard.observe(source_ref=ref, text=str(observation.get("content") or ""), trust=trust,
                       sensitivity=sensitivity, source_kind=kind, step=step)
+
+    # Belt and braces for a cold memory (a restarted service): the harness also
+    # says how untrusted the turn has been overall. If it has seen worse than we
+    # can, the context is exposed even though we cannot point at the span.
+    if parse_trust(history.get("least_trusted_seen"), Trust.SYSTEM_POLICY).untrusted:
+        guard.ledger.exposed_elsewhere = True
 
     # History the guard would otherwise have accumulated itself.
     guard.session["completed_tools"] = [

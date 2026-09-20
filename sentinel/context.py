@@ -13,7 +13,9 @@ authored by that vendor, whatever the surrounding prose claims.
 
 from __future__ import annotations
 
+import base64
 import itertools
+import re
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -26,6 +28,38 @@ _ids = itertools.count(1)
 # overlap, so that a paraphrased or truncated quotation still attributes.
 SHORT_VALUE = 64
 SHINGLE_HIT = 0.30
+
+# An opaque credential-shaped token: long, unbroken, mixing letters and digits.
+# Shingle overlap measures how much of a message came from a record, which is
+# the wrong question for a secret -- one API key inside three paragraphs of
+# honest summary is a 5% overlap and a 100% leak. These are matched verbatim,
+# through the same decoded views as everything else.
+_SECRET_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_\-]{14,}[A-Za-z0-9]")
+
+
+def secret_tokens(text: str) -> Tuple[str, ...]:
+    found = []
+    for token in _SECRET_TOKEN.findall(text or ""):
+        if re.search(r"\d", token) and re.search(r"[A-Za-z]", token):
+            found.append(token)
+    return tuple(dict.fromkeys(found))
+
+
+def _disguises(token: str) -> Tuple[str, ...]:
+    """The cheap encodings of a secret, searched for directly.
+
+    The decoded views in `normalize` deliberately discard decodings with no
+    word structure, which is right for finding instructions and wrong for
+    finding a bare key. Going the other way -- encode the secret, look for
+    that -- has no such blind spot. Base64 is tried at all three byte
+    alignments so a key embedded in a longer encoded string still matches.
+    """
+    raw = token.encode()
+    forms = [raw.hex()]
+    for pad in range(3):
+        encoded = base64.b64encode(b"\0" * pad + raw).decode().rstrip("=")
+        forms.append(encoded[(pad * 4 + 2) // 3 + (1 if pad else 0):-2 or None])
+    return tuple(f.lower() for f in forms if len(f) >= 12)
 
 
 @dataclass
@@ -42,6 +76,7 @@ class Observation:
     derived_from: Tuple[str, ...] = ()   # obs ids this was computed from
     views: Tuple[View, ...] = field(default_factory=tuple, repr=False)
     _shingles: set = field(default_factory=set, repr=False)
+    _secrets: Optional[Tuple[str, ...]] = field(default=None, repr=False)
 
     def __post_init__(self):
         if not self.views:
@@ -64,6 +99,15 @@ class Observation:
         if not other_shingles:
             return 0.0
         return len(other_shingles & self._shingles) / len(other_shingles)
+
+    @property
+    def secrets(self) -> Tuple[str, ...]:
+        """Credential-shaped tokens in a record classified CONFIDENTIAL or above."""
+        if self.sensitivity < Sensitivity.CONFIDENTIAL:
+            return ()
+        if self._secrets is None:
+            self._secrets = secret_tokens(self.text)
+        return self._secrets
 
 
 @dataclass
@@ -110,6 +154,16 @@ class Attribution:
         }
 
 
+def carries(text: str, tokens) -> bool:
+    """Is any of `tokens` present in `text`, plainly or in a cheap disguise?"""
+    haystacks = [canonical(v.text) for v in views(text)]
+    squeezed = re.sub(r"[\s:]", "", text).lower()
+    return any(
+        any(token.lower() in hay for hay in haystacks)
+        or any(form in squeezed for form in _disguises(token))
+        for token in tokens)
+
+
 class ContextLedger:
     """Trusted principal text on one side, everything observed on the other."""
 
@@ -118,6 +172,9 @@ class ContextLedger:
         self.observations: List[Observation] = []
         self._trusted_canon = ""
         self._trusted_shingles: set = set()
+        # Set when whoever feeds the ledger knows untrusted content was read
+        # this turn but can no longer show it (a truncated history window).
+        self.exposed_elsewhere = False
 
     # ---- population -----------------------------------------------------
     def add_trusted(self, label: str, text: str) -> None:
@@ -141,7 +198,7 @@ class ContextLedger:
     @property
     def exposed(self) -> bool:
         """Has any untrusted content entered the context yet?"""
-        return bool(self.untrusted_observations)
+        return bool(self.untrusted_observations) or self.exposed_elsewhere
 
     def by_id(self, obs_id: str) -> Optional[Observation]:
         return next((o for o in self.observations if o.obs_id == obs_id), None)
@@ -200,12 +257,23 @@ class ContextLedger:
         if len(canonical(text)) < 16:
             return []
         value_shingles = shingles(text)
+        carried = {obs.obs_id for obs, _ in self.secrets_carried(text)}
         out = []
         for obs in self.observations:
             share = obs.overlap(value_shingles)
-            if share >= 0.10:
+            if share >= 0.10 or obs.obs_id in carried:
                 out.append((obs, share))
         return sorted(out, key=lambda pair: -pair[1])
+
+    def secrets_carried(self, value) -> List[Tuple[Observation, str]]:
+        """(record, token) for every classified secret present in `value`, in
+        plain form or behind any of the decoded views."""
+        text = "" if value is None else str(value)
+        holders = [o for o in self.observations if o.secrets]
+        if not text or not holders:
+            return []
+        return [(obs, token) for obs in holders for token in obs.secrets
+                if carries(text, (token,))]
 
     def untrusted_matching(self, predicate) -> List[Tuple[Observation, View]]:
         """Every (observation, decoded view) pair where `predicate(view_text)`."""

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from .capability import ToolSpec
-from .context import Attribution, ContextLedger
+from .context import Attribution, ContextLedger, carries as ledger_free_carries
 from .mandate import Mandate
 from .normalize import shingles
 from .signals import CandidateAction
@@ -56,12 +56,26 @@ def quarantine_untrusted_args(
     args = {k: v for k, v in action.args.items() if k not in dropped}
     if not all(r in args for r in spec.required_args):
         return []
+    # For a tool the operator never declared we do not know the schema, so we
+    # cannot know the trimmed call is still a valid one. Offer it only when the
+    # call still names the record it acts on. A search with its query removed
+    # is not a safer search; the environment rejects it, the agent retries, and
+    # the defense has bought a loop instead of a decision.
+    if spec.inferred and not any(spec.role_of(k) == "target" for k in args):
+        return []
     return [Rewrite(
         "quarantine",
         action.clone(args=args),
         f"Removed {', '.join(dropped)} -- authored by observed content, not by the user. "
         f"The rest of the call is the user's own request and proceeds.",
     )]
+
+
+def _scrub(piece: str, tokens) -> "str | None":
+    """Cut classified tokens out of a sentence; None when one survives encoded."""
+    for token in tokens:
+        piece = re.sub(re.escape(token), "[redacted]", piece, flags=re.IGNORECASE)
+    return None if ledger_free_carries(piece, tokens) else piece
 
 
 def redact_sensitive_content(
@@ -82,6 +96,7 @@ def redact_sensitive_content(
         ]
         if not sensitive:
             continue
+        tokens = {token for _, token in ledger.secrets_carried(value)}
         kept = []
         for piece in SENTENCE.split(value):
             grains = shingles(piece)
@@ -90,6 +105,13 @@ def redact_sensitive_content(
             ):
                 removed.append(obs.source_ref for obs in sensitive)
                 continue
+            # A secret quoted inside an otherwise original sentence: keep the
+            # sentence, lose the secret. If it is only there behind an
+            # encoding there is nothing to cut out, so the sentence goes.
+            if tokens:
+                piece = _scrub(piece, tokens)
+                if piece is None:
+                    continue
             kept.append(piece)
         cleaned = " ".join(p for p in kept if p.strip()).strip()
         args[arg] = (cleaned + " " + REDACTION).strip() if cleaned else REDACTION

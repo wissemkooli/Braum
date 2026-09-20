@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unittest
 
-from sentinel.api_adapter import action_digest, build_catalogue, decide
+from sentinel.api_adapter import MEMORY, action_digest, build_catalogue, decide
 
 SOC_POLICY = {
     "policy_id": "soc_standard",
@@ -18,6 +18,7 @@ SOC_POLICY = {
 
 
 def request(goal, action, conversation=(), provenance=(), policy=None, history=None):
+    MEMORY.clear()      # these are single-request tests; each one is its own run
     return {
         "run_id": "r", "step_id": 2, "user_goal": goal,
         "conversation": list(conversation), "provenance": list(provenance),

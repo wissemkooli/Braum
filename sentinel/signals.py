@@ -421,10 +421,17 @@ def flow_signals(
     unauthorized_source = None
     for arg in spec.args_with_role("content") + spec.args_with_role("control"):
         value = action.args.get(arg)
+        secret_holders = {o.obs_id for o, _ in ledger.secrets_carried(value)}
         for obs, share in ledger.taint_of(value):
             ids = set(ID_PATTERN.findall(obs.source_ref))
             off_mandate = bool(ids) and not (ids & set(mandate.resources)) and not mandate.resource_open(spec.family)
-            if obs.sensitivity >= Sensitivity.CONFIDENTIAL and (external_sink or off_mandate):
+            # A RESTRICTED credential is not something any sink receives by
+            # default -- the user's reply included -- unless the user named
+            # the record it lives in.
+            bare_secret = (obs.obs_id in secret_holders
+                           and obs.sensitivity >= Sensitivity.RESTRICTED
+                           and not (ids & set(mandate.resources)))
+            if obs.sensitivity >= Sensitivity.CONFIDENTIAL and (external_sink or off_mandate or bare_secret):
                 if worst is None or obs.sensitivity > worst[1].sensitivity:
                     worst = (arg, obs, share)
             if off_mandate:
@@ -433,9 +440,12 @@ def flow_signals(
     if worst:
         arg, obs, share = worst
         strength = 1.0 if obs.sensitivity >= Sensitivity.RESTRICTED else 0.8
+        carried = (f"`{arg}` carries a credential-shaped token verbatim from"
+                   if obs.obs_id in {o.obs_id for o, _ in ledger.secrets_carried(action.args.get(arg))}
+                   else f"{int(share * 100)}% of `{arg}` traces to")
         out.append(Evidence(
             "EXFIL_SENSITIVE_TO_SINK", "flow", strength,
-            f"{int(share * 100)}% of `{arg}` traces to {obs.source_ref} "
+            f"{carried} {obs.source_ref} "
             f"({obs.sensitivity.name}), heading for the `{spec.sink}` sink.",
             (obs.obs_id, arg),
         ))

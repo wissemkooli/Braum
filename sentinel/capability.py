@@ -155,7 +155,7 @@ CONTENT_ARGS = frozenset({
 })
 # Never dropped by the quarantine rewrite: removing them would produce a call
 # the tool cannot honour, which is a worse outcome than escalating.
-STRUCTURAL_ARGS = frozenset({"to", "recipient", "beneficiary", "amount", "target", "destination"})
+STRUCTURAL_ARGS = frozenset({"to", "recipient", "beneficiary", "amount", "target", "destination", "query"})
 
 # A status that retires or disables a record is consequential whatever the
 # tool is called; this mirrors how operators actually reason about state.
