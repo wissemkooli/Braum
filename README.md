@@ -15,7 +15,7 @@ inside a vendor's advisory field was written by the vendor, whatever the
 surrounding prose claims about policy.
 
 **On the organizers' own harness** (`Sentinel_Starter_Kit`, 19 public + 9
-validation scenarios, static and adaptive attackers):
+validation scenarios, static and adaptive attackers, kit's mock agent):
 
 | split | BTU ↑ | ASR ↓ | canary leaks | false blocks | official score |
 |---|---|---|---|---|---|
@@ -27,6 +27,11 @@ and the same numbers under the adaptive mutation attacker. That beats their
 `provenance` baseline (0.988 / 0.858) and sits alongside `heuristic_risk`.
 Details, and the five real defects this integration exposed in our defense:
 [docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md).
+
+Those runs use the kit's deterministic mock agent, which follows a reference plan.
+The same evaluation against the official reference agent — `Qwen/Qwen3-8B`, no
+reference plan, on a free Kaggle GPU — is one notebook:
+[docs/QWEN3_AGENT.md](docs/QWEN3_AGENT.md).
 
 On our own scenario library: 6/6 attacks contained, 9/9 tasks completed,
 0 benign runs blocked — including the attacks that beat it, which ship in

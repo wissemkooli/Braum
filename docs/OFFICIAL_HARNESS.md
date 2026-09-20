@@ -7,6 +7,9 @@ what it produced.
 ## Results
 
 Defense served from `submission/`, mock model, organizers' scenario library.
+The mock follows a reference plan the harness hands it; for the same evaluation
+driven by the official `Qwen/Qwen3-8B` reference agent, which gets no plan, see
+[QWEN3_AGENT.md](QWEN3_AGENT.md).
 
 | split | attacker | BTU ↑ | ASR ↓ | CVR ↓ | FBR ↓ | Brier ↓ | official score |
 |---|---|---|---|---|---|---|---|
