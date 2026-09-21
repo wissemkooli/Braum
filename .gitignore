@@ -15,3 +15,4 @@ artifacts/calibration/
 # redistributed. Remove this line if you want it in the public repo.
 docs/SENTINEL_Specification_Book_IndabaX_Tunisia.pdf
 SENTINEL_Specification_Book_IndabaX_Tunisia.pdf
+.pdfbuild/

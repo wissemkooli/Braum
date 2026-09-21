@@ -177,6 +177,10 @@ analysis is [TECHNICAL_REPORT §7.1](TECHNICAL_REPORT.md#71-the-official-referen
 
 Run 4 in full:
 
+![Attack success rate under Qwen3-8B by run](figures/qwen_asr_by_run.svg)
+
+![Official score under Qwen3-8B by run](figures/qwen_score_by_run.svg)
+
 | defense | split | attacker | BTU ↑ | ASR ↓ | CVR ↓ | FBR ↓ | Brier ↓ | official score |
 |---|---|---|---|---|---|---|---|---|
 | `allow_all` | public (40) | static | 0.667 | 0.742 | 0.550 | 0.000 | 0.194 | 0.132 |

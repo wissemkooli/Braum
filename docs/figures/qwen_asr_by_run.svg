@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 316" width="680" height="316" role="img" aria-label="Attack success rate under Qwen3-8B, public split (lower is better)" font-family="Helvetica, Arial, 'DejaVu Sans', sans-serif">
+<title>Attack success rate under Qwen3-8B, public split (lower is better)</title>
+<rect width="680" height="316" fill="#ffffff"/>
+<text x="20" y="28" font-size="15" fill="#0b0b0b" text-anchor="start" font-weight="bold">Attack success rate under Qwen3-8B, public split (lower is better)</text>
+<text x="20" y="47" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">Each run as it came out. Runs 1 and 3 are the ones we lost; each was followed by a fix.</text>
+<rect x="190" y="57" width="10" height="10" rx="2" fill="#eb6834"/>
+<text x="205" y="66" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">no defense (allow_all)</text>
+<rect x="354.4" y="57" width="10" height="10" rx="2" fill="#2a78d6"/>
+<text x="369.4" y="66" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">SENTINEL</text>
+<line x1="190.0" y1="74" x2="190.0" y2="256" stroke="#e7e6e1" stroke-width="1"/>
+<text x="190.0" y="270" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0</text>
+<line x1="295.0" y1="74" x2="295.0" y2="256" stroke="#e7e6e1" stroke-width="1"/>
+<text x="295.0" y="270" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.25</text>
+<line x1="400.0" y1="74" x2="400.0" y2="256" stroke="#e7e6e1" stroke-width="1"/>
+<text x="400.0" y="270" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.5</text>
+<line x1="505.0" y1="74" x2="505.0" y2="256" stroke="#e7e6e1" stroke-width="1"/>
+<text x="505.0" y="270" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.75</text>
+<line x1="610.0" y1="74" x2="610.0" y2="256" stroke="#e7e6e1" stroke-width="1"/>
+<text x="610.0" y="270" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">1</text>
+<text x="178" y="90.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">Run 1</text>
+<text x="178" y="104.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">20 Sep · 19 scenarios</text>
+<text x="196" y="89" font-size="10.5" fill="#8a8983" text-anchor="start" font-weight="normal">not measured</text>
+<path d="M190,94 h38.0 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-38.0 z" fill="#2a78d6"/>
+<text x="238.0" y="105" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.100</text>
+<text x="178" y="138.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">Run 2</text>
+<text x="178" y="152.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">20 Sep · 19 scenarios</text>
+<path d="M190,126 h80.0 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-80.0 z" fill="#eb6834"/>
+<text x="280.0" y="137" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.200</text>
+<rect x="190" y="142" width="1.5" height="14" fill="#2a78d6"/>
+<text x="197.5" y="153" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.000</text>
+<text x="178" y="186.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">Run 3</text>
+<text x="178" y="200.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">21 Sep · 40 scenarios</text>
+<path d="M190,174 h307.6 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-307.6 z" fill="#eb6834"/>
+<text x="507.61290322580646" y="185" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.742</text>
+<path d="M190,190 h199.2 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-199.2 z" fill="#2a78d6"/>
+<text x="399.2258064516129" y="201" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.484</text>
+<text x="178" y="234.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">Run 4</text>
+<text x="178" y="248.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">21 Sep · 40 scenarios</text>
+<path d="M190,222 h307.6 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-307.6 z" fill="#eb6834"/>
+<text x="507.61290322580646" y="233" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.742</text>
+<rect x="190" y="238" width="1.5" height="14" fill="#2a78d6"/>
+<text x="197.5" y="249" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.000</text>
+<text x="20" y="304" font-size="10.5" fill="#8a8983" text-anchor="start" font-weight="normal">Static attacker, seed 0. The organizers added 21 exfiltration scenarios between runs 2 and 3.</text>
+</svg>

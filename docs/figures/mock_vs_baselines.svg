@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 364" width="680" height="364" role="img" aria-label="Official score against the kit's baselines, mock agent (higher is better)" font-family="Helvetica, Arial, 'DejaVu Sans', sans-serif">
+<title>Official score against the kit's baselines, mock agent (higher is better)</title>
+<rect width="680" height="364" fill="#ffffff"/>
+<text x="20" y="28" font-size="15" fill="#0b0b0b" text-anchor="start" font-weight="bold">Official score against the kit's baselines, mock agent (higher is better)</text>
+<text x="20" y="47" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">Organizers' evaluator and library as of 2026-09-21, static attacker.</text>
+<rect x="190" y="57" width="10" height="10" rx="2" fill="#2a78d6"/>
+<text x="205" y="66" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">public (40 scenarios)</text>
+<rect x="348.20000000000005" y="57" width="10" height="10" rx="2" fill="#eb6834"/>
+<text x="363.20000000000005" y="66" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">validation (9 scenarios)</text>
+<line x1="190.0" y1="74" x2="190.0" y2="304" stroke="#e7e6e1" stroke-width="1"/>
+<text x="190.0" y="318" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0</text>
+<line x1="295.0" y1="74" x2="295.0" y2="304" stroke="#e7e6e1" stroke-width="1"/>
+<text x="295.0" y="318" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.25</text>
+<line x1="400.0" y1="74" x2="400.0" y2="304" stroke="#e7e6e1" stroke-width="1"/>
+<text x="400.0" y="318" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.5</text>
+<line x1="505.0" y1="74" x2="505.0" y2="304" stroke="#e7e6e1" stroke-width="1"/>
+<text x="505.0" y="318" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">0.75</text>
+<line x1="610.0" y1="74" x2="610.0" y2="304" stroke="#e7e6e1" stroke-width="1"/>
+<text x="610.0" y="318" font-size="10.5" fill="#8a8983" text-anchor="middle" font-weight="normal">1</text>
+<text x="178" y="97.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">SENTINEL (ours)</text>
+<path d="M190,78 h414.4 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-414.4 z" fill="#2a78d6"/>
+<text x="614.362" y="89" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.996</text>
+<path d="M190,94 h416.0 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-416.0 z" fill="#eb6834"/>
+<text x="616.0" y="105" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">1.000</text>
+<text x="178" y="138.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">provenance</text>
+<text x="178" y="152.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">kit baseline</text>
+<path d="M190,126 h390.4 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-390.4 z" fill="#2a78d6"/>
+<text x="590.38" y="137" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.939</text>
+<path d="M190,142 h356.4 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-356.4 z" fill="#eb6834"/>
+<text x="556.36" y="153" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.858</text>
+<text x="178" y="186.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">keyword</text>
+<text x="178" y="200.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">kit baseline</text>
+<path d="M190,174 h216.9 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-216.9 z" fill="#2a78d6"/>
+<text x="416.92" y="185" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.526</text>
+<path d="M190,190 h171.1 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-171.1 z" fill="#eb6834"/>
+<text x="371.14" y="201" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.417</text>
+<text x="178" y="234.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">heuristic_risk</text>
+<text x="178" y="248.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">kit baseline</text>
+<path d="M190,222 h61.5 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-61.5 z" fill="#2a78d6"/>
+<text x="261.52" y="233" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.156</text>
+<path d="M190,238 h416.0 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-416.0 z" fill="#eb6834"/>
+<text x="616.0" y="249" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">1.000</text>
+<text x="178" y="282.0" font-size="12" fill="#0b0b0b" text-anchor="end" font-weight="normal">allow_all</text>
+<text x="178" y="296.0" font-size="10" fill="#8a8983" text-anchor="end" font-weight="normal">no defense</text>
+<path d="M190,270 h18.7 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-18.7 z" fill="#2a78d6"/>
+<text x="218.68" y="281" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.054</text>
+<path d="M190,286 h87.6 a4,4 0 0 1 4,4 v6 a4,4 0 0 1 -4,4 h-87.6 z" fill="#eb6834"/>
+<text x="287.56" y="297" font-size="11" fill="#52514e" text-anchor="start" font-weight="normal">0.218</text>
+<text x="20" y="352" font-size="10.5" fill="#8a8983" text-anchor="start" font-weight="normal">The mock agent follows a reference plan, so every scenario's attack reaches the defense.</text>
+</svg>

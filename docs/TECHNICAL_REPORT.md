@@ -43,13 +43,14 @@ We adopt the challenge threat model and make it concrete.
 
 ### 2.1 The adversary can
 
-| Capability | How it appears in this repository |
+| Capability | How it appears in the organizers' library |
 |---|---|
-| Control text in declared surfaces | `attack.surfaces` writes into document bodies, email bodies, and tool-output fields before the agent runs |
-| Observe the agent's public actions | Payloads are authored with full knowledge of the tool catalogue and of this defense (§8 probes) |
-| Split an instruction into fragments | `longhorizon_split_instruction` spreads one payload across three documents |
-| Encode it | `arpibench_base64_exfil` carries the whole call in base64 |
-| Exploit ambiguity in the user's own request | `fail_goal_ambiguity` — and it works (§8) |
+| Control text in declared surfaces | each scenario's `attack.surfaces` writes into document bodies, email bodies, ticket comments and tool-output fields before the agent runs |
+| Observe the defense and adapt | the `mutation` attacker in `adaptive` mode rewrites the payload against the decisions it sees |
+| Split an instruction into fragments | `finance_split_settlement`, `soc_val_split_log` |
+| Encode it | `enterprise_val_encoded_exfil` |
+| Ask for nothing unauthorised at all | the 21 `data_exfiltration` scenarios: an in-scope lookup, then the agent's own summary discloses — and in run 3 it worked (§7.1.5) |
+| Exploit ambiguity in the user's own request | not in the library; a limit we state (§8.5) |
 
 ### 2.2 The adversary cannot
 
@@ -60,18 +61,18 @@ document's provenance.
 
 ### 2.3 What the defender assumes
 
-1. **The base model is fallible.** The agent in this repository is deliberately
-   credulous: it parses instructions out of everything it reads — including
-   after base64 decoding — and executes them. A defense evaluated against a
-   sceptical agent measures the agent. `tests/test_scenarios.py::
-   test_attacks_actually_reach_the_defense` fails the build if any attack
-   stops reaching the guard.
+1. **The base model is fallible, and unevenly so.** Qwen3-8B refuses most
+   instructions to move money or disable monitoring, and complies readily with
+   "look it up and write it down". A defense evaluated only on attacks the agent
+   ignores measures the agent, so every Qwen3-8B run here includes an undefended
+   control pass, and containment is counted only over attacks that succeed
+   without us (§7.1).
 2. **Untrusted text must still be read.** Every benign task in the library
    requires reading untrusted content. Refusing it is not an option.
-3. **Blocking everything is not acceptable.** Three hard negatives exist purely
-   to make over-refusal a test failure.
-4. **The agent's credentials are broad.** In `bipia_indirect_gathering` the
-   agent *can* read the restricted document. API-layer least privilege is
+3. **Blocking everything is not acceptable.** The library's benign and
+   hard-negative scenarios exist to make over-refusal a measured cost (BTU, FBR).
+4. **The agent's credentials are broad.** In `ent_backup_restore_draft` the
+   agent *can* read the restricted record, and the user asks it to. API-layer least privilege is
    complementary and insufficient: legitimate work needs wide read scope.
 
 ### 2.4 Out of scope
@@ -116,6 +117,8 @@ weakens as the user's request becomes vaguer (§8.5).
 ## 4. Method
 
 ### 4.1 Shape of a decision
+
+![The SENTINEL decision pipeline](figures/decision_pipeline.svg)
 
 ```
 begin_turn(goal)   →  derive the mandate from the goal alone, hash it, seal it
@@ -191,8 +194,8 @@ asked for passes any allowlist.
 `context` is the only family built from textual heuristics, and **its total
 contribution is capped at +2.2 log-odds**. A contaminated context raises the
 floor slightly; it can never on its own stop unrelated legitimate work. This
-cap is why the benign draft in `bipia_indirect_gathering` scores 0.046 even
-though the document it summarises contains a live injection.
+cap is why, in `enterprise_poisoned_invoice`, the draft the user asked for is
+allowed at 0.097 one step after the dictated search is blocked at 0.96.
 
 ### 4.6 Risk is a likelihood, not a severity
 
@@ -348,6 +351,12 @@ kept as a secondary table because it is the only agent for which every
 scenario's attack actually reaches the defense.
 
 ### 7.1 The official reference agent: Qwen3-8B
+
+![Attack success rate under Qwen3-8B by run](figures/qwen_asr_by_run.svg)
+
+![Official score under Qwen3-8B by run](figures/qwen_score_by_run.svg)
+
+Four runs, each reported as it came out; §7.1.1–7.1.5 take them in order.
 
 **How we ran the reference agent.** `Qwen/Qwen3-8B`, open weights, self-hosted
 in a Kaggle notebook on 2× T4 (no inference API), driven by the organizers'
@@ -524,6 +533,8 @@ committed as they came out (`artifacts/qwen3/run3-2026-09-21/`, `run4-2026-09-21
 | **4** | **SENTINEL** | public (40) | mutation, adaptive | 0.667 | **0.000** | **0.000** | 0.009 | 0.136 | **0.902** |
 | 3, 4 | both | validation (9) | all | 0.400 | 0.000 | 0.000 | 0.000 | 0.107 | 0.795 |
 
+![How the named-record exfiltration worked and how it is contained](figures/named_record_attack.svg)
+
 **Run 3: 15 of 31 attacks succeeded.** All 15 are the same shape
 (`ent_backup_restore_draft` is the one to read):
 
@@ -540,7 +551,7 @@ wrote. Argument provenance has nothing to say, and that is the point the
 organizers were making. What should have caught it is the information-flow rule
 added after run 1 (§7.1.3), which traces credential-shaped tokens verbatim, and
 it carried this clause: *a RESTRICTED credential may not reach any sink, the
-user's reply included, **unless the user named the record.*** We wrote that
+user's reply included,* **unless the user named the record.** We wrote that
 exemption because "the user asked for it" is the axiom of the whole design. It is
 wrong here: naming a record authorises reading it, not reproducing the credential
 inside it, and the record itself says so.
@@ -599,6 +610,8 @@ including reproduction commands, is in [OFFICIAL_HARNESS.md](OFFICIAL_HARNESS.md
 | public (40) | mutation, adaptive | 1.000 | 0.000 | 0.000 | 0.012 | 0.9961 |
 | validation (9) | static | 1.000 | 0.000 | 0.000 | 0.000 | 1.0000 |
 | validation (9) | mutation, adaptive | 1.000 | 0.000 | 0.000 | 0.000 | 1.0000 |
+
+![Official score against the kit's baselines](figures/mock_vs_baselines.svg)
 
 Their baselines on the same harness and library, public / validation, measured
 2026-09-21: `provenance` 0.939 / 0.858, `keyword` 0.526 / 0.417, `heuristic_risk`

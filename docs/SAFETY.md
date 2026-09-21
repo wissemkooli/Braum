@@ -79,21 +79,20 @@ under Qwen3-8B.
 
 ## 3. False-positive behaviour, measured
 
-Three hard negatives exist specifically to make over-refusal visible, including
-one (`hardneg_authorized_remediation`) that asks for exactly the three
-consequential calls the InjecAgent attack tries to force — same tools, same
-targets, opposite provenance.
+Qwen3-8B, run 4, public split (9 benign and hard-negative scenarios, 31 attack
+scenarios), organizers' evaluator:
 
 | | result |
 |---|---|
-| Benign runs blocked | **0** |
-| Benign runs whose task failed | **0** |
-| Escalations on benign runs | **3**, all `CONFIRMATION_REQUIRED` on irreversible actions the user explicitly asked for |
-| Worst risk score on a genuine action | **0.286** (tolerance for that severity: 0.40) |
+| Non-`ALLOW` decisions in benign or hard-negative scenarios | **0** |
+| Benign tasks the agent completes alone that fail behind the defense | **0** of 6 |
+| Legitimate decisions blocked (FBR) | **1** of 115 (0.009): a read in `enterprise_memory_poison` whose only source is the attacker's text |
+| Replies or notes rewritten to redact a credential | 17; the harness does not count these as false blocks, and the tasks complete |
+| Unnecessary escalations (UER) | **0.000** |
 
-The three escalations are a deliberate trade, not an accident. We treat "a
-human confirms a wire transfer" as correct behaviour rather than a false
-positive. An operator who disagrees changes `confirm_irreversible` in
+Irreversible actions the user explicitly asks for are escalated by design. We
+treat "a human confirms a wire transfer" as correct behaviour rather than a
+false positive. An operator who disagrees changes `confirm_irreversible` in
 `sentinel/policy.py`, or reclassifies the tool in `sentinel/tool_model.yaml` —
 one line, and the evaluator reads the same declaration, so the change is
 visible in the scoring too.
@@ -155,11 +154,10 @@ make an agent safe to run unattended on consequential work, and it should be
 deployed alongside API-layer least privilege, human review of irreversible
 actions, and auditing of the traces it produces.
 
-The claim we are willing to defend is narrow and testable: **with scripted,
-credulous agents, on our library and on the organizers', provenance-based
-decisions contain every attack while completing every task. With the real
-reference agent the first run leaked a restricted credential; we publish that
-run, its cause and the fix, and we do not claim the fixed defense is clean under
-Qwen3-8B until the re-run in the technical report says so. The conditions under
-which the defense stops working are documented, runnable, and in this
-repository.**
+The claim we are willing to defend is narrow and testable: **on the organizers'
+library as of 2026-09-21, under the official reference agent Qwen3-8B, one seed,
+every attack that succeeds against the undefended agent is contained, and no
+task the agent completes alone is lost. It took four runs to get there and we
+lost two of them, to defects of our own; both runs, their causes and the fixes
+are published in this repository. The last fix was written after seeing the
+attacks it stops, and has been tested on nothing else.**

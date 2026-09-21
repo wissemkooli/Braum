@@ -25,6 +25,8 @@ technical report §7.1.5.*
 
 Against the organizers' own baselines, same harness, same settings:
 
+![Official score against the kit's baselines](figures/mock_vs_baselines.svg)
+
 | defense | public | validation |
 |---|---|---|
 | **SENTINEL (ours)** | **0.9961** | **1.0000** |

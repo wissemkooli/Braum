@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 326" width="760" height="326" role="img" aria-label="The SENTINEL decision pipeline" font-family="Helvetica, Arial, 'DejaVu Sans', sans-serif">
+<title>The SENTINEL decision pipeline</title>
+<rect width="760" height="326" fill="#ffffff"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#52514e"/></marker></defs>
+<text x="20" y="28" font-size="15" fill="#0b0b0b" text-anchor="start" font-weight="bold">One decision</text>
+<text x="20" y="47" font-size="11.5" fill="#52514e" text-anchor="start" font-weight="normal">Authority is sealed from the user's goal before anything is read; every later action is judged against it.</text>
+<rect x="20" y="70" width="144" height="92" rx="6" fill="#f6f5f2" stroke="#e7e6e1"/>
+<text x="92.0" y="90" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">1 · Seal the mandate</text>
+<text x="92.0" y="108" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">from the user's goal alone:</text>
+<text x="92.0" y="122" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">capabilities, records,</text>
+<text x="92.0" y="136" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">prohibitions; hashed</text>
+<rect x="184" y="70" width="144" height="92" rx="6" fill="#f6f5f2" stroke="#e7e6e1"/>
+<text x="256.0" y="90" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">2 · Observe</text>
+<text x="256.0" y="108" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">every span the agent</text>
+<text x="256.0" y="122" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">reads, with its trust and</text>
+<text x="256.0" y="136" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">sensitivity labels</text>
+<rect x="348" y="70" width="144" height="92" rx="6" fill="#f6f5f2" stroke="#e7e6e1"/>
+<text x="420.0" y="90" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">3 · Attribute</text>
+<text x="420.0" y="108" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">each argument traced,</text>
+<text x="420.0" y="122" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">through decoded views,</text>
+<text x="420.0" y="136" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">to the span it came from</text>
+<rect x="512" y="70" width="144" height="92" rx="6" fill="#eaf2fc" stroke="#c5dcf5"/>
+<text x="584.0" y="90" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">4 · Evidence</text>
+<text x="584.0" y="108" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">origin · mandate · context</text>
+<text x="584.0" y="122" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">· flow · history</text>
+<text x="584.0" y="136" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">→ P(induced), log-odds</text>
+<line x1="164" y1="116.0" x2="182" y2="116.0" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="328" y1="116.0" x2="346" y2="116.0" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="492" y1="116.0" x2="510" y2="116.0" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="20" y="206" width="200" height="78" rx="6" fill="#f6f5f2" stroke="#e7e6e1"/>
+<text x="120.0" y="226" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">Hard rules set a floor</text>
+<text x="120.0" y="244" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">task scope · user prohibition ·</text>
+<text x="120.0" y="258" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">sensitive flow · confirmation ·</text>
+<text x="120.0" y="272" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">oversight · lifecycle</text>
+<rect x="250" y="206" width="200" height="78" rx="6" fill="#eaf2fc" stroke="#c5dcf5"/>
+<text x="350.0" y="226" font-size="12.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">Policy</text>
+<text x="350.0" y="244" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">risk × the tool's consequence</text>
+<text x="350.0" y="258" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">tier → least restrictive</text>
+<text x="350.0" y="272" font-size="10.5" fill="#52514e" text-anchor="middle" font-weight="normal">sufficient intervention</text>
+<line x1="584" y1="162" x2="400" y2="204" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="220" y1="245" x2="248" y2="245" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="480" y="202" width="76" height="18" rx="9" fill="#ffffff" stroke="#52514e"/>
+<text x="518" y="215" font-size="10.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">ALLOW</text>
+<text x="564" y="215" font-size="10.5" fill="#52514e" text-anchor="start" font-weight="normal">proceeds unchanged</text>
+<rect x="480" y="224" width="76" height="18" rx="9" fill="#ffffff" stroke="#52514e"/>
+<text x="518" y="237" font-size="10.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">REWRITE</text>
+<text x="564" y="237" font-size="10.5" fill="#52514e" text-anchor="start" font-weight="normal">quarantine · redact · downgrade</text>
+<rect x="480" y="246" width="76" height="18" rx="9" fill="#ffffff" stroke="#52514e"/>
+<text x="518" y="259" font-size="10.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">ESCALATE</text>
+<text x="564" y="259" font-size="10.5" fill="#52514e" text-anchor="start" font-weight="normal">a human decides</text>
+<rect x="480" y="268" width="76" height="18" rx="9" fill="#ffffff" stroke="#52514e"/>
+<text x="518" y="281" font-size="10.5" fill="#0b0b0b" text-anchor="middle" font-weight="bold">BLOCK</text>
+<text x="564" y="281" font-size="10.5" fill="#52514e" text-anchor="start" font-weight="normal">nothing weaker clears</text>
+<line x1="450" y1="245" x2="476" y2="245" stroke="#52514e" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="20" y="312" font-size="10.5" fill="#8a8983" text-anchor="start" font-weight="normal">Every step writes one record to the trace: evidence, weights, alternatives considered, the decision.</text>
+</svg>

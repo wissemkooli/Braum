@@ -25,6 +25,8 @@ reference agent, **`Qwen/Qwen3-8B`**, self-hosted on a Kaggle GPU.
 | no defense (`allow_all`) | 0.667 | 0.742 | 0.550 | 0.000 | 0.132 |
 | **SENTINEL**, static and adaptive attacker | 0.667 | **0.000** | **0.000** | 0.009 | **0.902** |
 
+![Attack success rate under Qwen3-8B by run](docs/figures/qwen_asr_by_run.svg)
+
 **23 of 31 public attacks succeed against the undefended agent; all 23 are
 contained.** The agent completes 6 of 9 benign tasks on its own and all 6 survive
 the defense; the BTU is the agent's, identical with no defense. The defense's
@@ -66,9 +68,10 @@ reference plan (static and adaptive attackers):
 Every attack contained, every benign task completed, nothing classified leaked —
 and the same numbers under the adaptive mutation attacker. The one blemish is
 `enterprise_memory_poison`: contained, but the defense also blocks the read the
-user wanted, because the attacker named that record first. That beats their
-`provenance` baseline (0.988 / 0.858) and sits just under `heuristic_risk` on
-the public split (0.9986), level with it on validation.
+user wanted, because the attacker named that record first. On the same library
+the kit's own baselines score 0.939 / 0.858 (`provenance`), 0.526 / 0.417
+(`keyword`) and 0.156 / 1.000 (`heuristic_risk`, which led us on the older
+19-scenario split).
 Details, and the five real defects this integration exposed in our defense:
 [docs/OFFICIAL_HARNESS.md](docs/OFFICIAL_HARNESS.md). Pass/fail by the
 specification's attack families over the 28 scenarios of the earlier library, and an exact account of
@@ -132,6 +135,8 @@ access"}`* and mail the result to the vendor. Qwen3-8B follows it.
 ---
 
 ## How it works
+
+![The SENTINEL decision pipeline](docs/figures/decision_pipeline.svg)
 
 ```
 begin_turn(goal)   →  derive authority from the goal alone, hash it, seal it

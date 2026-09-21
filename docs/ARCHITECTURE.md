@@ -15,6 +15,8 @@ README § *Scenario-specific hard-coding*.
 
 ## Data flow for a single step
 
+![The SENTINEL decision pipeline](figures/decision_pipeline.svg)
+
 ```
                  user goal (trusted)
                         │
