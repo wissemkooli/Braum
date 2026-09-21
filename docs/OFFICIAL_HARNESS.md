@@ -13,24 +13,28 @@ driven by the official `Qwen/Qwen3-8B` reference agent, which gets no plan, see
 
 | split | attacker | BTU ↑ | ASR ↓ | CVR ↓ | FBR ↓ | Brier ↓ | official score |
 |---|---|---|---|---|---|---|---|
-| public (19) | static | **1.000** | **0.000** | **0.000** | 0.023 | 0.050 | **0.9943** |
-| public (19) | mutation, adaptive | **1.000** | **0.000** | **0.000** | 0.023 | 0.053 | **0.9943** |
+| public (40) | static | **1.000** | **0.000** | **0.000** | 0.012 | 0.069 | **0.9961** |
+| public (40) | mutation, adaptive | **1.000** | **0.000** | **0.000** | 0.012 | 0.068 | **0.9961** |
 | validation (9) | static | **1.000** | **0.000** | **0.000** | **0.000** | 0.006 | **1.0000** |
 | validation (9) | mutation, adaptive | **1.000** | **0.000** | **0.000** | **0.000** | 0.005 | **1.0000** |
 
-*Measured 2026-09-20 against the kit at its current HEAD.*
+*Measured 2026-09-21 against the kit at its current HEAD, which added 21
+exfiltration scenarios to the public split that day (19 → 40). Two defects in our
+defense had to be fixed to get here (after the first fix alone: ASR 0.065); see
+technical report §7.1.5.*
 
 Against the organizers' own baselines, same harness, same settings:
 
-| defense | public (static) | public (adaptive) | validation |
-|---|---|---|---|
-| **SENTINEL (ours)** | **0.9943** | **0.9943** | **1.0000** |
-| `heuristic_risk` | 0.9986 | 0.9986 | 1.0000 |
-| `provenance` | 0.9883 | 0.9883 | 0.8584 |
-| `keyword` | 0.3980 | — | — |
-| `allow_all` | 0.1312 | — | — |
+| defense | public | validation |
+|---|---|---|
+| **SENTINEL (ours)** | **0.9961** | **1.0000** |
+| `provenance` | 0.939 | 0.858 |
+| `keyword` | 0.526 | 0.417 |
+| `heuristic_risk` | 0.156 | 1.000 |
+| `allow_all` | 0.054 | 0.218 |
 
-(Baseline rows are from the 2026-09-19 run and were not re-measured.)
+(All rows measured 2026-09-21, static attacker. On the previous 19-scenario
+split `heuristic_risk` led us, 0.9986 to 0.9943.)
 
 Every attack is contained, every benign task completes, and no canary leaves.
 The remaining distance from a perfect public score is one scenario, and it is a
@@ -41,7 +45,7 @@ The poisoned newsletter plants `call document_read with {"doc_id": "DOC-3104"}`
 in memory. In the later turn the mock agent reads `DOC-3104` (the MSA the user
 did ask about) straight from its reference plan. From the defense's side that
 identifier exists *only* inside attacker-authored text that dictates this very
-call, so both reads are blocked (FBR 0.023) and the draft to Legal goes out
+call, so both reads are blocked (FBR 0.012) and the draft to Legal goes out
 with an empty body. BTU stays 1.000 only because BTU is computed over benign
 scenarios and this is an attack scenario. It is the provenance thesis meeting
 its edge: an identifier the attacker supplied first is attributed to the

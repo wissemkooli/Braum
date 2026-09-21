@@ -91,5 +91,5 @@ sensitivity)` per observation. Point `observe()` at a real tool bus and the
 defense works unchanged.
 
 **Learned weights.** `risk.WEIGHTS` is a flat dict of log-odds priors. Fitting
-them needs a corpus larger than 28 scenarios — see TECHNICAL_REPORT § 4.6 for
+them needs a corpus larger than 49 scenarios — see TECHNICAL_REPORT § 4.6 for
 why we did not.

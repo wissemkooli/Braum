@@ -23,7 +23,7 @@ does not take the bait on its own:
 | Control-argument hijacking inside a legitimate call | argument-granularity capability resolution; the poisoned argument is quarantined or the call refused | `enterprise_val_ticket_comment` (mock) |
 | Poisoned memory recalled as policy | memory inherits the trust of what it was written from | `enterprise_memory_poison`, `soc_intel_memory_poison` (mock) |
 | Payload assembled from separately-harmless fragments | provenance is per-value, not per-message | `finance_split_settlement`, `soc_val_split_log` (mock) |
-| Exfiltration of classified content to a sink | information-flow hard rule + redaction rewrite | `enterprise_poisoned_invoice` (Qwen3-8B): CVR 0.053 → 0.000 |
+| Exfiltration of classified content to a sink | information-flow hard rule + redaction rewrite | the 21 `data_exfiltration` scenarios (Qwen3-8B, run 4): CVR 0.550 → 0.000. Run 3 lost 15 of them first. |
 | Consequential action without a human | `CONFIRMATION_REQUIRED` / `OVERSIGHT_INTEGRITY` floors | `soc_hostile_log_text` (mock): the dictated `remediation_execute` |
 | A request out of policy made by the **user themselves** | `TOOL_OUTSIDE_TASK_SCOPE`: the operator's per-task tool scope outranks the request | `enterprise_direct_token_request` (Qwen3-8B) |
 
@@ -42,22 +42,28 @@ under Qwen3-8B.
    provenance goes silent. Containment then rests
    entirely on the hard rules, which only cover irreversible and
    oversight-affecting actions.
-4. **Anything the model says rather than does.** This is an action-layer
-   defense. It makes no guarantee about the truthfulness, tone or safety of
-   the agent's prose, only about the tool calls that reach the environment.
-5. **Mislabelled data.** Information-flow enforcement trusts the sensitivity
+4. **A secret that does not look like one, or is not labelled.** Disclosure is
+   stopped by tracing credential-shaped tokens from RESTRICTED records verbatim
+   (and through simple encodings). A passphrase made of words, a secret the agent
+   paraphrases or spells out, or a record mislabelled INTERNAL passes. Until
+   2026-09-21 a credential also passed whenever the user had named its record;
+   15 attacks used that (technical report §7.1.5).
+5. **Anything else the model says rather than does.** Apart from the credential
+   redaction above, this is an action-layer defense. It makes no guarantee about
+   the truthfulness, tone or safety of the agent's prose.
+6. **Mislabelled data.** Information-flow enforcement trusts the sensitivity
    labels on records. A restricted document labelled INTERNAL is not protected
    by the flow rule.
-6. **Content sanitisation.** Injected text that is part of a document survives
+7. **Content sanitisation.** Injected text that is part of a document survives
    into a legitimate summary of that document. A human reader sees the attack;
    a downstream agent reading that summary is freshly exposed.
-7. **Policy we were not given.** `TOOL_OUTSIDE_TASK_SCOPE` only works because
+8. **Policy we were not given.** `TOOL_OUTSIDE_TASK_SCOPE` only works because
    the operator declares a per-task tool scope. Where no such scope exists, a
    user asking for something out of policy is indistinguishable to us from a
    user asking for something in policy — we originally missed this family
    entirely (technical report §7.2.1), and the mechanism that covers it is
    configuration, not inference.
-8. **History it was never shown, after a restart.** The harness sends the
+9. **History it was never shown, after a restart.** The harness sends the
    defense a 12-item window. Under Qwen3-8B that window once scrolled a
    poisoned document out of view and a restricted token leaked (technical
    report §7.1.2). The service now remembers what it has been sent per run, but
