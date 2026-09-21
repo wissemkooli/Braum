@@ -203,10 +203,17 @@ def infer_spec(name: str, consequential: bool = False, known_tools: tuple = ()) 
                 safer = Downgrade(tool=alternative, keep=("subject", "body", "content", "message", "note"))
                 break
 
+    # A tool that writes is somewhere content can land, modelled or not;
+    # without a sink the information-flow rules never look at it.
+    sink = None
+    if severity > Consequence.READ_ONLY:
+        sink = "outbound" if verb in ("send", "notify", "publish", "post", "share") else objects[0]
+
     return ToolSpec(
         name=name,
         capability=f"{objects[0]}.{verb}",
         consequence=severity,
+        sink=sink,
         requires_confirmation=consequential,
         oversight_impact=oversight,
         safer_alternative=safer,

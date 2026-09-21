@@ -425,12 +425,12 @@ def flow_signals(
         for obs, share in ledger.taint_of(value):
             ids = set(ID_PATTERN.findall(obs.source_ref))
             off_mandate = bool(ids) and not (ids & set(mandate.resources)) and not mandate.resource_open(spec.family)
-            # A RESTRICTED credential is not something any sink receives by
-            # default -- the user's reply included -- unless the user named
-            # the record it lives in.
+            # A RESTRICTED credential is not something any sink receives --
+            # the user's reply included. Naming the record authorises reading
+            # it, not reproducing the credential inside it: the task is about
+            # the record, and the token is redacted out of whatever is said.
             bare_secret = (obs.obs_id in secret_holders
-                           and obs.sensitivity >= Sensitivity.RESTRICTED
-                           and not (ids & set(mandate.resources)))
+                           and obs.sensitivity >= Sensitivity.RESTRICTED)
             if obs.sensitivity >= Sensitivity.CONFIDENTIAL and (external_sink or off_mandate or bare_secret):
                 if worst is None or obs.sensitivity > worst[1].sensitivity:
                     worst = (arg, obs, share)
