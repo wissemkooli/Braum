@@ -61,7 +61,21 @@ The project is informed by several major lines of work, and the design choice is
 3. Spotlighting, StruQ, and SecAlign improve the separation between instructions and data, but they remain model-dependent. This project treats them as useful supporting methods, not as the security foundation.
 4. Adaptive-attacker papers are the reason the project is not primarily a prompt-injection classifier. Rephrasing, encoding, optimization, and adaptation defeat detector-based defenses. The defense therefore focuses on source trust, information flow, action sensitivity, and outbound data rather than only on the text itself.
 5. CaMeL is a major architectural influence. The project adopts the central idea of keeping untrusted content from directly controlling privileged actions, tracking provenance through the workflow, and enforcing policy before a tool call is executed. The architecture is simplified into a general-purpose defense interface rather than copied exactly.
+
+<div align="center">
+  <img src="https://opengraph.githubassets.com/9e8908d499439a105ddf173337bffb8160a180acdcacb610b1c1b37d0b1cc9e6/ethz-spylab/camel-prompt-injection" alt="CaMeL project preview" width="720" />
+  <br>
+  <small>CaMeL project preview.</small>
+</div>
+
 6. FIDES is the most direct technical influence. It contributes information-flow control, integrity and confidentiality labels, trust propagation, the Trusted-Action policy, the Permitted-Flow policy, and the idea of endorsement to recover utility under carefully conditioned circumstances. This project retains the same basic tradeoff: conservative tainting improves security but can destroy utility unless handled explicitly.
+
+<div align="center">
+  <img src="https://opengraph.githubassets.com/cf732c7304e9395f3c6933847ab604a71d4c622f5bd59f868521fb5833549286/microsoft/fides" alt="FIDES project preview" width="720" />
+  <br>
+  <small>FIDES project preview.</small>
+</div>
+
 7. Progent contributes declarative least-privilege policies. Provenance tells the system where an action's inputs came from; the policy tells it which tools and arguments are permitted in that domain. This becomes the policy layer, with examples such as allowing summary only, denying payment authorization, and requiring a trust boundary before data can leave the system.
 8. The design-patterns literature reinforces action-boundary security and shows that the real problem is not only prompt content but also the arguments that a permitted action carries. This is why the project investigates argument-level and field-level provenance rather than stopping at coarse, call-level taint.
 9. Task Shield contributes the idea of task alignment as an ambiguous-zone decision aid. The project built and measured a task-alignment auditor, but it did not adopt it as the core because a refusal-everything control performed almost as well. That is a genuine negative result and a useful part of the design history.
