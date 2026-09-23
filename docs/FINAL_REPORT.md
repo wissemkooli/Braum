@@ -4,6 +4,9 @@
   <br>
   <small>character from league of legends</small>
 </div>
+
+Braum is the shield-tank metaphor for this design: he stands in front, absorbs the dangerous blow, and protects the useful teammate behind him while the real weapons keep firing from a safer position. The same idea applies here. The defense is the shield that protects the agent and its tools from poisoned instructions, while the model still carries out the useful work behind the boundary. The system is not trying to stop the agent from acting; it is trying to ensure the agent acts on trusted authority rather than on hostile evidence.
+
 This project studies a provenance-aware security boundary for tool-using agents. The central claim is simple: untrusted content may be read, but it should not automatically gain authority to perform a consequential action, disclose protected information, or change the system state without a trusted mandate behind it. The report below integrates the public benchmark, the internal evaluation suite, and the supporting literature into one technical narrative.
 
 ## 1. Abstract
@@ -111,7 +114,6 @@ Execution gateway and replay log
   <small>Decision pipeline for the defense</small>
 </div>
 
-Braum is the shield-tank metaphor for this design: he stands in front, absorbs the dangerous blow, and protects the useful teammate behind him while the real weapons keep firing from a safer position. The same idea applies here. The defense is the shield that protects the agent and its tools from poisoned instructions, while the model still carries out the useful work behind the boundary. The system is not trying to stop the agent from acting; it is trying to ensure the agent acts on trusted authority rather than on hostile evidence.
 
 At the center of the method is provenance. Every relevant token, field, or object is labeled with a trust state and a source. If a user asks to send a payment, and part of the destination address or amount came from an untrusted email, then the action is not automatically valid. The system evaluates whether the untrusted evidence directly controls a sensitive argument, whether the action is sensitive, and whether the action would create a sensitive data flow. Only then is the action allowed.
 
