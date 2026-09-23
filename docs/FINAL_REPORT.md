@@ -1,14 +1,14 @@
 # Braum research report
 
-This project follows the Braum and Tekmor lineage as a single technical program: the deployment-facing system and the experimental benchmark suite are two views of the same core defense. The project is fundamentally about a provenance-aware security boundary for tool-using agents. The report below treats the names as context once and then speaks in terms of the system itself, while making the experimental work in the Tekmor documentation explicit and central to the benchmark discussion.
+This project studies a provenance-aware security boundary for tool-using agents. The central claim is simple: untrusted content may be read, but it should not automatically gain authority to perform a consequential action, disclose protected information, or change the system state without a trusted mandate behind it. The report below integrates the public benchmark, the internal evaluation suite, and the supporting literature into one technical narrative.
 
 ## 1. Abstract
 
-The project studies a simple but difficult question: when an LLM agent is allowed to call tools, where does the authority to act come from, and what evidence may legitimately inform that decision? The answer is not a text classifier. The answer is a policy boundary that separates trusted instructions from untrusted inputs, then checks whether a proposed action is consistent with the user mandate, the tool's capability, the provenance of the arguments, and the information-flow constraints of the surrounding context. This is the design principle behind the system: untrusted content may be read and reasoned over, but it does not automatically become an authority that can spend user intent, exfiltrate confidential material, or trigger irreversible actions.
+The project studies a simple but difficult question: when an LLM agent is allowed to call tools, where does the authority to act come from, and what evidence may legitimately inform that decision? The answer is not a text classifier. The answer is a policy boundary that separates trusted instructions from untrusted inputs, then checks whether a proposed action is consistent with the user mandate, the tool's capability, the provenance of the arguments, and the information-flow constraints of the surrounding context. This is the design principle behind the defense: untrusted content may be read and reasoned over, but it does not automatically become an authority that can spend user intent, exfiltrate confidential material, or trigger irreversible actions.
 
 The underlying mechanism is a provenance monitor. Candidate tool calls are inspected at the argument level, the source of each decisive value is recovered, and the decision stage evaluates whether the action is supported by trusted evidence, whether sensitive data is being moved to an unauthorized sink, and whether a safer rewrite is available. If the action is too risky or too ambiguous, the system blocks it or escalates it to a human; if a less dangerous equivalent exists, it rewrites the call rather than shutting the task down.
 
-The public-split deployment result is strong: in the official Qwen3-8B evaluation, the defense contained all 23 attacks that reached the undefended agent while incurring one blocked benign read. The measured public-run utility was 0.667, attack success was 0.000, false-block rate was 0.009, and the final reported challenge score was 0.902. The experimental suite gives the same picture from a different angle. In the internal Tekmor benchmark, the monitored configuration completed all benign work, kept false blocks at 0.00, and reduced attack success from 1.00 to 0.06; with the canary layer enabled, it reached 0.04 secret leaks and zero false blocks. On AgentDojo, the same mechanism remains conservative: the benchmark remains a useful stress test, but the externally reported numbers are better read as a scripted upper-bound evaluation than as a fully model-driven real-world result.
+The public-split deployment result is strong: in the official Qwen3-8B evaluation, the defense contained all 23 attacks that reached the undefended agent while incurring one blocked benign read. The measured public-run utility was 0.667, attack success was 0.000, false-block rate was 0.009, and the final reported challenge score was 0.902. The experimental suite gives the same picture from a different angle. In the internal evaluation suite, the monitored configuration completed all benign work, kept false blocks at 0.00, and reduced attack success from 1.00 to 0.06; with the canary layer enabled, it reached 0.04 secret leaks and zero false blocks. On AgentDojo, the same mechanism remains conservative: the benchmark remains a useful stress test, but the externally reported numbers are best read as a scripted upper-bound evaluation rather than as a fully model-driven real-world result.
 
 The long-term lesson is not that one number wins. The lesson is that the security boundary must be maintained at the action layer, where tool use, authority, and data movement meet. Detectors fail under paraphrase and rewording; provenance does not. The project therefore treats the policy boundary as the core artifact and treats learned or heuristic augmentations as secondary, benchmark-dependent experiments rather than the foundation of the defense.
 
@@ -16,7 +16,7 @@ The long-term lesson is not that one number wins. The lesson is that the securit
 
 The project targets indirect prompt injection, instruction hijacking, and trusted-user-authority confusion in tool-using agents. In practical terms, any untrusted input may contain text that is semantically meaningful to the model but does not have the authority to cause actions. That includes emails, invoices, documents, web pages, memory entries, API payloads, and outputs from external systems that the user did not directly author.
 
-From the Braum and Tekmor threat-model writeups, the adversary is modeled as capable of:
+The adversary is modeled as capable of:
 
 - controlling text in declared surfaces such as document bodies, ticket comments, email bodies, and tool-output fields;
 - observing the defense and adapting payloads against the decisions it sees;
@@ -29,7 +29,7 @@ The adversary is not assumed to be able to escape the sandbox, reach a network, 
 
 The key security claim is that an agent can read hostile data while still refusing to spend the user's authority on a harmful or unauthorized action. The monitor is evaluated not on whether the injected text looks malicious, but on whether the action is justified by trusted evidence and permitted under the user's task and policy constraints. This is the specific move from content-based classification toward action-based provenance enforcement. The policy therefore distinguishes between reading content, making a policy decision, and executing a consequential action.
 
-The threat model also includes machine-generated memory poisoning, multi-hop tool calls, and the specific problem of information flow: sensitive data may be present in memory or retrieved from an external system, but it must not be exported to an untrusted sink or to a sink that violates the user's mandate. In the Braum technical report, this is stated as the central claim that authority is temporal and provenance survives paraphrase: the action's decisive arguments trace back to observed content rather than to the user's own words, and the action's capability must lie outside the envelope derivable from the user's goal before any content was read.
+The threat model also includes machine-generated memory poisoning, multi-hop tool calls, and the specific problem of information flow: sensitive data may be present in memory or retrieved from an external system, but it must not be exported to an untrusted sink or to a sink that violates the user's mandate. This is the central claim behind the provenance-first design: authority is temporal and provenance survives paraphrase, so an action's decisive arguments must trace back to trusted user intent rather than to content the model merely read.
 
 What is explicitly out of scope is the compromise of the model itself, the host system, or the secure runtime. The project is not a defense against a malicious operating system or malicious tool implementation. It is a defense against a malicious or manipulated payload crossing the boundary into the tool-calling layer and being mistaken for legitimate authority.
 
@@ -44,6 +44,28 @@ The project tests a set of falsifiable claims about security and utility:
 5. Probabilistic heuristics can be measured, but they should not become the primary decision layer unless they pass a strict gate and remain robust under held-out workloads.
 
 These hypotheses animate the experimental suite. The internal benchmark is designed to show that a simple action-level policy can block attacks with almost no false blocks, while the AgentDojo run is designed to show where the same policy is too conservative or unrealistic when the benchmark structure differs from the production setting.
+
+### Design influences from the major literature and prior systems
+
+The project is informed by several major lines of work, and the design choice is to combine them without making any one of them the source of truth.
+
+1. Indirect prompt injection sets the threat model: retrieved content can contain instructions, and an agent may confuse those instructions with the user's request. The defense therefore does not stop the agent from reading hostile content; it prevents that content from acquiring authority simply because it was read.
+2. The instruction hierarchy makes the priority of sources explicit: system instructions rank above user instructions, which rank above tool or third-party content. This project turns that ordering into an enforceable trust lattice rather than leaving it to model behavior alone.
+3. Spotlighting, StruQ, and SecAlign improve the separation between instructions and data, but they remain model-dependent. This project treats them as useful supporting methods, not as the security foundation.
+4. Adaptive-attacker papers are the reason the project is not primarily a prompt-injection classifier. Rephrasing, encoding, optimization, and adaptation defeat detector-based defenses. The defense therefore focuses on source trust, information flow, action sensitivity, and outbound data rather than only on the text itself.
+5. CaMeL is a major architectural influence. The project adopts the central idea of keeping untrusted content from directly controlling privileged actions, tracking provenance through the workflow, and enforcing policy before a tool call is executed. The architecture is simplified into a general-purpose defense interface rather than copied exactly.
+6. FIDES is the most direct technical influence. It contributes information-flow control, integrity and confidentiality labels, trust propagation, the Trusted-Action policy, the Permitted-Flow policy, and the idea of endorsement to recover utility under carefully conditioned circumstances. This project retains the same basic tradeoff: conservative tainting improves security but can destroy utility unless handled explicitly.
+7. Progent contributes declarative least-privilege policies. Provenance tells the system where an action's inputs came from; the policy tells it which tools and arguments are permitted in that domain. This becomes the policy layer, with examples such as allowing summary only, denying payment authorization, and requiring a trust boundary before data can leave the system.
+8. The design-patterns literature reinforces action-boundary security and shows that the real problem is not only prompt content but also the arguments that a permitted action carries. This is why the project investigates argument-level and field-level provenance rather than stopping at coarse, call-level taint.
+9. Task Shield contributes the idea of task alignment as an ambiguous-zone decision aid. The project built and measured a task-alignment auditor, but it did not adopt it as the core because a refusal-everything control performed almost as well. That is a genuine negative result and a useful part of the design history.
+10. LlamaFirewall contributes the idea that multiple signals can be layered, but they should not replace a deterministic policy layer. The project treats detectors and auditors as secondary signals rather than as the source of truth.
+11. MELON contributes the idea of masked re-execution, but the project chose not to implement it because it doubles inference cost and conflicts with the desire for a deterministic, CPU-friendly core. It remains a possible extension.
+12. TaskTracker and the mechanistic-interpretability literature contribute the idea of a drift signal, but the project demoted that path after it failed on realistic held-out traces. It learned that external text had arrived, not that an instruction had been followed.
+13. AgentDojo provides the main external evaluation environment. The project borrows its stateful task structure, domain diversity, and benchmark logic, while remaining careful to interpret the results as benchmark-specific and not universal.
+14. ASB, InjecAgent, and similar benchmark families inform the scenario design for memory poisoning, indirect injection, multi-step actions, and benign hard negatives. The project synthesizes them into a scenario matrix spanning direct attacks, encoded attacks, exfiltration, benign tasks, and adaptive mutation.
+15. OpenTelemetry, OpenInference, Langfuse, and Phoenix provide the broad tooling direction for observability, but they do not model trust labels or provenance chains. The project therefore adds its own security event model and provenance graph so every decision can be reconstructed from a trace.
+
+The resulting design is a layered defense rather than a single detector: provenance and information flow form the security floor, policy defines the permission surface, rewrite preserves utility, and canary tracking catches secret leakage. Probabilistic signals are kept secondary and are rejected if they fail their gates.
 
 ## 4. Method
 
@@ -79,17 +101,25 @@ ALLOW / REWRITE / ESCALATE / BLOCK
 Execution gateway and replay log
 ```
 
+<div align="center">
+  <img src="./figures/decision_pipeline.svg" alt="Decision pipeline for the defense" width="780" />
+  <br>
+  <small>Character from League of Legends.</small>
+</div>
+
+Braum is the shield-tank metaphor for this design: he stands in front, absorbs the dangerous blow, and protects the useful teammate behind him while the real weapons keep firing from a safer position. The same idea applies here. The defense is the shield that protects the agent and its tools from poisoned instructions, while the model still carries out the useful work behind the boundary. The system is not trying to stop the agent from acting; it is trying to ensure the agent acts on trusted authority rather than on hostile evidence.
+
 At the center of the method is provenance. Every relevant token, field, or object is labeled with a trust state and a source. If a user asks to send a payment, and part of the destination address or amount came from an untrusted email, then the action is not automatically valid. The system evaluates whether the untrusted evidence directly controls a sensitive argument, whether the action is sensitive, and whether the action would create a sensitive data flow. Only then is the action allowed.
 
-The Braum technical report formalizes this in the plan-attestation logic: the mandate is derived from the user goal before any content is read, then hashed and sealed. The defense records capabilities, prohibitions, referenced records, and open-resolution cases. A malicious document may want the agent to do something new, but it cannot retroactively grant authority that the mandate never had. This is the central principle behind the sealed-envelope model. In Tekmor, the same idea is stated even more bluntly: untrusted content may be read as evidence, but it must not gain authority to perform an action or disclose protected information.
+The Braum technical report formalizes this in the plan-attestation logic: the mandate is derived from the user goal before any content is read, then hashed and sealed. The defense records capabilities, prohibitions, referenced records, and open-resolution cases. A malicious document may want the agent to do something new, but it cannot retroactively grant authority that the mandate never had. This is the central principle behind the sealed-envelope model: untrusted content may be read as evidence, but it must not gain authority to perform an action or disclose protected information.
 
-The core mechanism is argument provenance attribution. For each decisive argument of a candidate call, the system finds the span of text or structured field from which the argument came, then asks whether that source was trusted or untrusted. In the Braum implementation this is a weighted argument-role model: a `control` argument like `amount`, `status`, or `recipient` is much more sensitive than a content-only field. In Tekmor it is framed through trust lattice propagation: every read source carries a label, and the integrity of the action is the minimum trust among all influences. This is Biba-style integrity: information does not become more trustworthy by mixing with a higher-trust source.
+The core mechanism is argument provenance attribution. For each decisive argument of a candidate call, the system finds the span of text or structured field from which the argument came, then asks whether that source was trusted or untrusted. In the project implementation this is a weighted argument-role model: a `control` argument like `amount`, `status`, or `recipient` is much more sensitive than a content-only field. The same idea is expressed as trust-lattice propagation: every read source carries a label, and the integrity of the action is the minimum trust among all influences. This is Biba-style integrity: information does not become more trustworthy by mixing with a higher-trust source.
 
-The method also separates risk from severity. A tool may be high-severity, but the probability that it was induced by untrusted content is a different quantity. The Braum report keeps them separate and only permits the action to proceed when evidence and utility are aligned; otherwise it escalates, blocks, or rewrites. In Tekmor, the same idea appears as a floor-based policy: some rules are hard stops such as user prohibition, sensitive flow, confirmation required, unknown capability, and lifecycle order. These are not probabilistic guesses; they are policy constraints that ensure the system fails closed when the conditions are severe or ambiguous.
+The method also separates risk from severity. A tool may be high-severity, but the probability that it was induced by untrusted content is a different quantity. The project keeps these separate and only permits the action to proceed when evidence and utility are aligned; otherwise it escalates, blocks, or rewrites. The same idea appears as a floor-based policy: some rules are hard stops such as user prohibition, sensitive flow, confirmation required, unknown capability, and lifecycle order. These are not probabilistic guesses; they are policy constraints that ensure the system fails closed when the conditions are severe or ambiguous.
 
-A rewrite is used when the action can be transformed into a safer equivalent. A request to send email becomes draft email; a payment request becomes a preparation note or a human-review step; a file disclosure becomes a redacted summary. The system prefers this safer path to blanket refusal whenever the user goal remains intact. Only if no safe transformation exists does it escalate or block. The Tekmor documents emphasize that this is the difference between a usable defense and a block-everything policy. False-block rate is treated as a first-class metric precisely because over-tainting and over-refusal are what destroy utility.
+A rewrite is used when the action can be transformed into a safer equivalent. A request to send email becomes draft email; a payment request becomes a preparation note or a human-review step; a file disclosure becomes a redacted summary. The system prefers this safer path to blanket refusal whenever the user goal remains intact. Only if no safe transformation exists does it escalate or block. This is the difference between a usable defense and a block-everything policy. False-block rate is treated as a first-class metric precisely because over-tainting and over-refusal are what destroy utility.
 
-The project does not rely on a model-based security judge as its primary mechanism. In the Tekmor design proposals, the alignment auditor and activation-drift probe are treated as research extensions and explicitly gated against deterministic baselines. The formal defense instead relies on a minimal set of deterministic rules and explicit provenance propagation, which keeps the mechanism auditable, reproducible, and resistant to adaptive attack under paraphrase and encoding.
+The project does not rely on a model-based security judge as its primary mechanism. In the project design proposals, the alignment auditor and activation-drift probe are treated as research extensions and explicitly gated against deterministic baselines. The formal defense instead relies on a minimal set of deterministic rules and explicit provenance propagation, which keeps the mechanism auditable, reproducible, and resistant to adaptive attack under paraphrase and encoding.
 
 ## 5. Experiments
 
@@ -108,11 +138,11 @@ The official public-run metrics are:
 
 This is the strongest deployment-oriented statement available in the project: the system successfully prevented the attack from reaching the action boundary while preserving the core task flow.
 
-### 5.2 Internal Tekmor benchmark
+### 5.2 Internal evaluation benchmark
 
-The project also contains a substantial internal evaluation designed around the same principles but with a richer set of simulation worlds and attack families. The Tekmor internal suite includes 26 scenarios spanning enterprise, finance, and security-operations settings. These scenarios cover seven attack families at difficulty levels 1 through 5, and eight of the cases are benign hard negatives — actions that look risky but are actually legitimate and should not be blocked.
+The project also contains a substantial internal evaluation designed around the same principles but with a richer set of simulation worlds and attack families. The internal suite includes 26 scenarios spanning enterprise, finance, and security-operations settings. These scenarios cover seven attack families at difficulty levels 1 through 5, and eight of the cases are benign hard negatives — actions that look risky but are actually legitimate and should not be blocked.
 
-This makes the evaluation especially informative. A system that simply denies sensitive actions or blocks all risky-looking content would look secure on a simple benchmark, but it fails badly on the hard negatives. The Tekmor internal work is therefore designed to measure not only attack success but also the cost of the defense on legitimate tasks. It is a direct answer to the question: how much security do we gain, and how much utility do we lose?
+This makes the evaluation especially informative. A system that simply denies sensitive actions or blocks all risky-looking content would look secure on a simple benchmark, but it fails badly on the hard negatives. The internal evaluation work is therefore designed to measure not only attack success but also the cost of the defense on legitimate tasks. It is a direct answer to the question: how much security do we gain, and how much utility do we lose?
 
 The internal suite reports the following headline numbers:
 
@@ -146,11 +176,11 @@ The relevant results are:
 
 The external benchmark is the location where the project becomes honest about signal quality and accuracy. The raw call-level taint approach is secure but too conservative. Endorsement recovers utility but at cost to security. The right conclusion is not that the mechanism failed; the correct conclusion is that the benchmark pushes the defense into a difficult trade space where a stronger security boundary must be balanced against the demand for benign work to continue. This is exactly the value of AgentDojo: it reveals where the mechanism is robust and where the assumptions stop holding.
 
-### 5.5 Tekmor documentation and the experiment library
+### 5.5 Research documentation and experiment library
 
-The Tekmor documentation is unusually rich. It includes a numbered technical narrative, explicit evaluation methodology, ablations, negative results, and a long-form limitation section. The project benefits from this because the reader can see the facts, the caveats, and the failed “nice idea” experiments in the same place. The sequence of documents covers the core problem, the threat model, architecture, provenance and trust, design proposals, evaluation methodology, results, and limitations. This should be treated as a model for a serious research report rather than as an optional appendix.
+The project includes a numbered technical narrative, explicit evaluation methodology, ablations, negative results, and a long-form limitation section. This structure matters because it lets the reader see the facts, the caveats, and the failed “nice idea” experiments in the same place. The sequence of documents covers the core problem, the threat model, architecture, provenance and trust, design proposals, evaluation methodology, results, and limitations. This is the model for a full research report rather than an optional appendix.
 
-The compiler result is also a lesson in honesty: the project is strongest when it admits where a mechanism underperforms and why. The alignment judge, the activation probe, and several label-based heuristics were all tested and either failed the implicit gate or were explicitly demoted because their gains were benchmark-bound rather than general. That makes the final system stronger, not weaker.
+The result is a lesson in honesty: the project is strongest when it admits where a mechanism underperforms and why. The alignment judge, the activation probe, and several label-based heuristics were all tested and either failed the implicit gate or were explicitly demoted because their gains were benchmark-bound rather than general. That makes the final system stronger, not weaker.
 
 ## 6. Results
 
@@ -163,6 +193,12 @@ The compiler result is also a lesson in honesty: the project is strongest when i
 | Final public score | — | — | — | 0.902 |
 
 The public benchmark demonstrates the most important deployment-level claim: the defense stopped attack execution at the action boundary without eliminating the primary task flow. It is not a perfect guarantee against all future attacks, but it is strong evidence that the policy logic and action-level semantics matter more than raw text detection.
+
+<div align="center">
+  <img src="./figures/mock_vs_baselines.svg" alt="Comparison of defended and baseline performance" width="820" />
+  <br>
+  <small>Visual comparison of the defended and baseline operating points.</small>
+</div>
 
 ### 6.2 Internal suite results
 
@@ -189,6 +225,12 @@ This table gives a clear picture of the security-utility frontier. Deny-sensitiv
 | Deny-gray | 0.45 | 0.000 | Refuse ambiguous actions |
 
 The AgentDojo numbers matter because they show that all headline claims must be contextualized. A monitor that performs admirably on an internal benchmark may still pay a substantial utility cost on a broader external benchmark. The honest research conclusion is therefore not “the system wins” in a universal sense, but “the system preserves utility while reducing attack success on the benchmark family it was designed around, and it becomes more conservative when the benchmark changes.”
+
+<div align="center">
+  <img src="./figures/named_record_attack.svg" alt="Named record attack evaluation" width="820" />
+  <br>
+  <small>Attack pattern analysis under the named-record benchmark.</small>
+</div>
 
 ## 7. Ablations
 
@@ -222,7 +264,7 @@ The fourth failure mode is calibration and generalization. The risk score can be
 
 The fifth and most important failure mode is the model-driven execution gap. In the project's own attempt to remove the script-driven confound and run a full model-driven AgentDojo loop, utility was 0.00 even for the allow-all baseline. The result is not a failure of the defense; it is a failure of the runtime contract and the benchmark driver. The model was writing the wrong format, stopping before a valid tool call, or failing to complete the task in a way that the harness recognized. This is a reminder that a benchmark without a valid tool-call contract is not a valid benchmark for tool use.
 
-A related failure is the activation-drift probe. Tekmor's design proposal explicitly reports the result: the probe reached 0.99 AUROC on synthetic validation but only 0.65 AUROC with 0.91 false positives on held-out AgentDojo traces, flagging 88 of 97 clean runs. This is the textbook example of a signal that is excellent on synthetic data and useless in the real tool-output distribution. It failed its gate twice and was demoted to future work. The negative result is crucial because it shows that a model-internal signal cannot be treated as a security primitive without a strong, held-out validation.
+A related failure is the activation-drift probe. The project explicitly records the result: the probe reached 0.99 AUROC on synthetic validation but only 0.65 AUROC with 0.91 false positives on held-out AgentDojo traces, flagging 88 of 97 clean runs. This is the textbook example of a signal that is excellent on synthetic data and useless in the real tool-output distribution. It failed its gate twice and was demoted to future work. The negative result is crucial because it shows that a model-internal signal cannot be treated as a security primitive without a strong, held-out validation.
 
 The project also records the refusal-switch failure. The model-based gray-zone auditors were compared not only to the bare monitor but also against a control in which the judge always says “no.” That control reproduced the same behavior nearly exactly, which means the judge was not measuring alignment so much as enforcing a blanket refusal. This is a major warning against wrapping a probabilistic model around a deterministic defense and treating the result as a separate technical guarantee.
 
@@ -240,11 +282,11 @@ Finally, the system has to be honest about domain differences. An enterprise set
 
 ## 10. Reproducibility
 
-The project is designed to support reproducibility, and the Tekmor documentation is especially useful here because it provides the evaluation narrative along with the benchmark caveats. Reproducibility requires clear state of the model, the benchmark, the hardware, the seeds, the policy layer, and the data traces. A lot of the work already does this in the artifact layout and in the benchmark harness, but the final report still has to remind the reader that a number is only meaningful if it can be traced back to a run.
+The project is designed to support reproducibility. Reproducibility requires clear state of the model, the benchmark, the hardware, the seeds, the policy layer, and the data traces. A lot of the work already does this in the artifact layout and in the benchmark harness, but the final report still has to remind the reader that a number is only meaningful if it can be traced back to a run.
 
-The commands and artifact paths used by the project should therefore be preserved with their versions. The public run uses the Qwen3-8B agent and the official challenge harness; the experimental suite uses the internal scenario matrix and AgentDojo; and the figures are generated from saved result files rather than from ad hoc manually recreated numbers. In the Tekmor repository, this is explicit: `assets/figures.py` loads result files directly where a run is reproducible on CPU and fails loudly if the run is missing. That is a standard worth preserving in any serious evaluation stack.
+The commands and artifact paths used by the project should therefore be preserved with their versions. The public run uses the Qwen3-8B agent and the official challenge harness; the experimental suite uses the internal scenario matrix and AgentDojo; and the figures are generated from saved result files rather than from ad hoc manually recreated numbers. This is explicit in the project artifacts: result files are loaded directly where a run is reproducible and the process fails loudly if the run is missing. That is a standard worth preserving in any serious evaluation stack.
 
-The project should continue to emphasize versioning, run hashes, and artifact lineage. A benchmark number is not a property of the model alone. It is a property of the model, the tool-call contract, the scenario set, the attack policy, and the environment. That is why the figures in the Tekmor documentation are accompanied by methodology and limitation sections rather than being treated as self-justifying scores.
+The project should continue to emphasize versioning, run hashes, and artifact lineage. A benchmark number is not a property of the model alone. It is a property of the model, the tool-call contract, the scenario set, the attack policy, and the environment. That is why the project keeps methodology and limitation sections alongside the figures rather than treating the plots as self-justifying scores.
 
 The key reproducibility point is that the strongest claims in this project are not the ones with the most colorful plots; they are the ones backed by an auditable action boundary and a clear description of what was measured and what was not. That is why the project retains the internal benchmark numbers and the external benchmark numbers together, then explains the caveat on each one, rather than trying to hide the uncomfortable tradeoff.
 
