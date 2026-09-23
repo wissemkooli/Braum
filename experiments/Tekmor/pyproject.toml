@@ -1,0 +1,61 @@
+[project]
+name = "tekmor"
+version = "0.0.0"
+description = "A measurable safety layer for tool-using LLM agents"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Ghassen Naouar" }]
+# Runtime dependencies are intentionally empty. See "Dependency Discipline" in CLAUDE.md
+# before adding one.
+dependencies = []
+
+# Optional extras, each needed by exactly one component and imported inside it, so a
+# checkout that does not use that component installs nothing. See "Dependency
+# Discipline" in CLAUDE.md and the entries in docs/decisions.md.
+[project.optional-dependencies]
+# YAML scenario files (simulator/scenario.py). JSON scenarios need nothing.
+yaml = ["pyyaml>=6"]
+# The Qwen3-8B adapter (runtime/qwen.py). Transformers rather than a serving layer, so
+# residual-stream hooks stay reachable for Proposal C.
+qwen = ["transformers>=4.51", "torch>=2.4", "accelerate>=1.0"]
+# External validation on AgentDojo (evaluation/dojo.py). Evaluation-only: nothing under
+# src/ imports it.
+agentdojo = ["agentdojo>=0.1.35"]
+# Regenerating the documentation figures from recorded results (assets/figures.py).
+# Documentation-only: nothing under src/ or evaluation/ imports it, and the committed
+# PNGs mean a reader never needs it installed.
+docs = ["matplotlib>=3.8"]
+
+[dependency-groups]
+# pyyaml is here as well as in the extras so CI exercises the YAML front end; the qwen
+# extra is deliberately not, because CI has no GPU and those tests are marked slow.
+dev = ["pytest>=8", "ruff>=0.6", "pyyaml>=6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tekmor"]
+
+[tool.ruff]
+line-length = 100
+# `.` as well, so `evaluation/` is first-party to the import sorter like the rest.
+src = ["src", "tests", "."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The repository root, so `tests/evaluation/` can import the harness. `evaluation/` is
+# not part of the installed package: it depends on `tekmor`, never the reverse.
+pythonpath = ["."]
+# `slow` is excluded by default: those tests load a real model backend, and the default
+# `uv run pytest` must not start a multi-gigabyte download. `-m slow` on the command line
+# overrides this.
+addopts = "-q --strict-markers -m 'not slow'"
+markers = [
+  "slow: needs a real model backend or a GPU; excluded from the default run",
+]
