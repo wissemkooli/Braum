@@ -48,32 +48,36 @@ under Qwen3-8B.
    paraphrases or spells out, or a record mislabelled INTERNAL passes. Until
    2026-09-21 a credential also passed whenever the user had named its record;
    15 attacks used that (technical report §7.1.5).
-5. **Anything else the model says rather than does.** Apart from the credential
+5. **An instruction that names no tool.** Two of our signals need the tool's
+   name to appear in the untrusted text. Against the same attack written as
+   ordinary prose the risk on a dictated read falls from 0.966 to 0.551 and the
+   block is lost — the unauthorised read proceeds. What still holds is the
+   consequence side: the credential is redacted at the sink and a consequential
+   action is still refused, because neither the flow rule nor the hard rules
+   read the injection. Measured in technical report §8.5, pinned in
+   `tests/test_prose_injection.py`.
+6. **Anything else the model says rather than does.** Apart from the credential
    redaction above, this is an action-layer defense. It makes no guarantee about
    the truthfulness, tone or safety of the agent's prose.
-6. **Mislabelled data.** Information-flow enforcement trusts the sensitivity
+7. **Mislabelled data.** Information-flow enforcement trusts the sensitivity
    labels on records. A restricted document labelled INTERNAL is not protected
    by the flow rule.
-7. **Content sanitisation.** Injected text that is part of a document survives
+8. **Content sanitisation.** Injected text that is part of a document survives
    into a legitimate summary of that document. A human reader sees the attack;
    a downstream agent reading that summary is freshly exposed.
-8. **Policy we were not given.** `TOOL_OUTSIDE_TASK_SCOPE` only works because
+9. **Policy we were not given.** `TOOL_OUTSIDE_TASK_SCOPE` only works because
    the operator declares a per-task tool scope. Where no such scope exists, a
    user asking for something out of policy is indistinguishable to us from a
    user asking for something in policy — we originally missed this family
    entirely (technical report §7.2.1), and the mechanism that covers it is
    configuration, not inference.
-9. **History it was never shown, after a restart.** The harness sends the
+10. **History it was never shown, after a restart.** The harness sends the
    defense a 12-item window. Under Qwen3-8B that window once scrolled a
    poisoned document out of view and a restricted token leaked (technical
    report §7.1.2). The service now remembers what it has been sent per run, but
    in process memory: restart it mid-run and it knows only *that* the turn was
    exposed, not *to what*.
-9. **Secrets that do not look like secrets.** Verbatim credential tracing needs
-   a 16+ character token mixing letters and digits in a record labelled
-   CONFIDENTIAL or above. A passphrase of ordinary words, or a secret the agent
-   describes instead of quoting, passes it.
-10. **The model, the sandbox, and the supply chain.** No fine-tuning, no
+11. **The model, the sandbox, and the supply chain.** No fine-tuning, no
    guarantee about model internals, no protection if the tool catalogue itself
    is wrong or malicious.
 
