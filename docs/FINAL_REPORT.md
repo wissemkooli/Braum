@@ -1,176 +1,162 @@
-# Braum — Final Project Report
+# BRAUM research report
 
-**Former repository/project name:** SENTINEL  
-**Repository:** `wissemkooli/sentinel-indabax`  
-**Challenge:** IndabaX Tunisia 2026 research challenge
+No page limit. Report component metrics as evidence for your claims, not as an official score — there is no official score; judging is against the rubric in [scoring.md](scoring.md). Include the benchmark version and any scorecard digests you cite so a reader can trace them back to a run.
 
-## TL;DR
+## 1. Abstract
 
-Braum is a deployment-oriented provenance and policy defense for tool-using LLM agents. It treats untrusted documents, emails, memories, and tool outputs as content that may be read but does not automatically gain authority to cause actions or disclose protected information.
+Braum is a deployment-oriented provenance and policy defense for tool-using LLM agents. It treats untrusted documents, emails, memories, and tool outputs as content that may be read but does not automatically gain authority to perform consequential actions or disclose protected information. Across the official Qwen3-8B public split, the defense contained all 23 attacks that reached the undefended agent while incurring one blocked benign read. The observed public-split results were BTU 0.667, ASR 0.000, CVR 0.000, and FBR 0.009, for an official score of 0.902. The same design is consistent with Tekmor's research evidence: a provenance monitor with a canary layer reached BTU 1.00, ASR 0.06, CVR 0.04, and FBR 0.00 on its internal suite, while AgentDojo remained a conservative upper-bound benchmark because its results were generated with a scripted ground-truth agent. The key limitation is that the defense is strongest on a fixed benchmark with a reproducible agent and still needs a real model-driven run to confirm performance under a fully capable agent.
 
-The defense seals authority from the user's goal before external content is exposed, tracks provenance and sensitivity, attributes decisive arguments to their sources, applies capability and information-flow policy, and chooses the least restrictive safe intervention: allow, rewrite, escalate, or block.
+## 2. Threat model
 
-The decision engine is deterministic. Qwen3-8B is the protected agent in the official evaluation, not Braum's policy engine.
+- Which attack families and surfaces does your defense target?
+  - Indirect prompt injection from documents, emails, tool outputs, and memory.
+  - Argument-driven exfiltration, memory-poisoning, and multi-step instruction hijacking.
+  - Sensitive tool calls that depend on untrusted evidence but must not become authorized actions.
+- What does the adversary know (payloads, your decisions, adaptivity)?
+  - The adversary can read and mutate untrusted content, can adapt payloads across encodings and rewordings, and can observe public decisions and reason codes.
+  - This is precisely the threat model used in Tekmor's adaptive attacker and in the official Braum harness.
+- What is explicitly out of scope?
+  - Full model compromising, malicious model weights, or direct compromise of the host runtime.
+  - A complete treatment of a real-world production environment outside the harness and benchmark conditions.
 
-## Key Findings
+## 3. Hypothesis
 
-1. **Action-boundary enforcement is stronger than text-only detection.** Braum evaluates the proposed tool action, its arguments, provenance, capability, and information flow rather than trying to classify text as malicious.
-2. **The official Braum path contains all 23 attacks that reached the undefended Qwen3-8B agent on the public split**, with one documented blocked legitimate read.
-3. **Tekmor's internal research suite supports the same design direction.** Its provenance monitor plus canary layer reached 1.00 benign utility, 0.06 attack success, 0.04 secret leaks, and 0.00 false blocks.
-4. **Provenance is the main measured contributor in Tekmor.** Removing it raised attack success from 0.06 to 0.94; removing taint propagation raised it to 0.39.
-5. **External validation is less flattering.** On AgentDojo, Tekmor's scripted-policy evaluation achieved 0.45 benign utility and 0.036 attack success, showing the cost of conservative call-level taint.
-6. **The research track keeps negative results.** Tekmor's activation probe failed its false-positive gate on held-out traces, and its model-driven AgentDojo attempt produced no valid comparative run.
+Two falsifiable statements anchor the work:
 
-## Details
+1. Tracking which untrusted sources influenced an action's arguments and sensitive outputs reduces ASR on indirect injection and exfiltration by a large margin while preserving most benign utility.
+2. A defense that enforces authority sealing, provenance tracking, and capability-aware rewrite will keep attack success near zero on the official public split without collapsing utility, even when attacker payloads are reworded or encoded.
 
-### Part I — Problem Understanding
+## 4. Method
 
-Tool-using agents read from sources their users do not control and can spend the user's authority by sending messages, moving money, changing records, or disclosing data. The central failure is that read content and trusted instructions share one context.
-
-The shared design principle is:
-
-> Untrusted content is evidence, not authority.
-
-### Part II — State of the Art
-
-Braum follows the action-centric security line represented by provenance, information-flow control, capability policies, and least-privilege tool mediation. It does not claim that a classifier can reliably detect every indirect prompt injection, especially under paraphrase, encoding, or adaptive mutation.
-
-Tekmor's research report records the related-work analysis and distinguishes deterministic policy enforcement from optional alignment judges and activation-based signals.
-
-### Part III — Existing Tools & Open-Source Ecosystem
-
-Braum is organized as a self-contained deployment path:
-
-- `sentinel/` contains the defense and policy engine.
-- `submission/` contains the official v1 FastAPI service and Docker package.
-- `observability/` contains trace replay and dashboarding.
-- `artifacts/` contains recorded evaluation outputs.
-- `experiments/Tekmor/` contains the independent research implementation and its benchmarks.
-
-The two tracks must not be conflated. A future comparison must identify whether it evaluates unchanged Braum, unchanged Tekmor, an adapter, or a derived experimental variant.
-
-### Part IV — Security Architecture
+- Architecture diagram: where the defense sits (input, planning, retrieval, memory, tool authorization, output).
 
 ```text
 User goal
     ↓
-Authority / mandate sealing before external content is read
+Authority / mandate sealing
     ↓
-Observed content with trust, sensitivity, and provenance
+Observed content with provenance and sensitivity labels
     ↓
-Agent proposes a candidate tool action
+Candidate tool action
     ↓
-Argument-level provenance attribution
+Argument attribution + capability policy + information-flow checks
     ↓
-Capability, mandate, policy, and information-flow checks
+Risk and evidence evaluation
     ↓
-Evidence and risk evaluation
+ALLOW / REWRITE / ESCALATE / BLOCK
     ↓
-Generate and re-score safer alternatives
-    ├── allow
-    ├── rewrite: quarantine, redact, or downgrade
-    ├── escalate to a human
-    └── block
-    ↓
-Execution boundary
+Execution gateway
     ↓
 JSONL trace, replay, and dashboard
 ```
 
-Authority comes from the user's goal, not from later documents or tool results. Provenance and sensitivity remain attached to observed content, and sensitive data is not allowed to cross an unauthorized sink. The policy engine can preserve useful work by downgrading `send` to `draft` or an irreversible action to a safer preparation step.
+- Signals used (provenance, action structure, model internals, history) and how decisions are made.
+  - Braum uses provenance, trust, sensitivity, capability, and information-flow checks.
+  - It seals authority from the user goal before untrusted content is exposed.
+  - It attributes decisive arguments back to the source span and rejects actions when an untrusted source exerts control over a sensitive tool or a protected sink.
+  - It preserves utility through least-restrictive rewrite, such as downgrading a send action to a draft or preparation action.
+- Training data, objectives, and hyperparameters for any learned component.
+  - No external learned component is used for the policy decision itself. Braum's system is deterministic. The Qwen3-8B model is the protected agent, not the defense.
+  - Tekmor includes optional learned or probe-based extensions, but those were explicit research experiments and did not become part of the core path.
+- How `risk_score` and `confidence` are produced and calibrated; when you escalate and when you rewrite.
+  - Braum scores risk from evidence and policy, and it escalates only when a consequence is severe or ambiguous and a weaker intervention is unavailable.
+  - Rewrite is preferred whenever a sensitive action can be downgraded to a safer form without changing the user's task meaning.
 
-### Part V — Observability
+## 5. Experiments
 
-Braum records structured JSONL traces containing the mandate, observations, evidence, risk, policy decisions, rewrites, and execution outcomes. The trace can be replayed in the terminal or rendered in the self-contained dashboard. This makes the causal path from an untrusted source to a blocked action inspectable.
+- What you ran the published scenario library against, plus any extra self-test scenarios you authored.
+  - Official Braum evaluation used the IndabaX challenge library with the reference agent `Qwen/Qwen3-8B` on the public and validation splits.
+  - An explicit mock-agent path was also evaluated for the kit scenario library, and it showed near-perfect containment for the public and validation splits.
+  - Tekmor was evaluated on an internal 26-scenario suite and on AgentDojo v1.2.2.
+- Models, hardware, seeds, and the reference agent configuration (`mock` vs. `qwen3-8b`).
+  - Braum official run: Qwen3-8B, seed 0, public split 40, with the official challenge harness; the same model is the agent being protected.
+  - Tekmor internal suite: custom scenario matrix across three domains with seven attack families, difficulty 1–5; adaptive attack runs and ablations used a scripted ground-truth driver.
+  - Tekmor AgentDojo: four suites, 97 benign runs and 583 attack pairs, using the AgentDojo driver with a scripted ground-truth agent.
+- Baselines compared: at least `allow_all`, `provenance`, and one other.
+  - Braum official baseline: `allow_all` (undefended), `provenance`-style path, and the final deployed defense.
+  - Tekmor baseline: `allow-all`, `deny-sensitive`, and `keyword` filter.
 
-### Part VI — Evaluation Design
+## 6. Results
 
-The official evaluation records the model, split, attacker, seed, implementation version, and limitations. The primary model is Qwen3-8B, self-hosted on a Kaggle GPU. The reported metrics include benign task utility, attack success, canary leaks, and false-block rate.
+| Defense / benchmark | BTU | ASR | CVR | FBR | UER | TUI | DFI | Brier | ECE | p95 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Braum official, `allow_all` (public, 40) | 0.667 | 0.742 | 0.550 | 0.000 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Braum official, defense (public, 40) | 0.667 | 0.000 | 0.000 | 0.009 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Braum official score, public run | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0.902 |
+| Braum mock agent, public (40) | 1.000 | 0.000 | 0.000 | 2 reads + 1 scenario | n/a | n/a | n/a | n/a | n/a | n/a |
+| Braum mock agent, validation | 1.000 | 0.000 | 0.000 | 0.000 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Tekmor internal, `allow_all` | 1.00 | 1.00 | 0.42 | 0.00 | n/a | n/a | n/a | n/a | 0.07 | n/a |
+| Tekmor internal, `tekmor` | 1.00 | 0.11 | 0.08 | 0.00 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Tekmor internal, `tekmor` + canary | 1.00 | 0.06 | 0.04 | 0.00 | n/a | n/a | n/a | n/a | 0.04 | n/a |
+| Tekmor AgentDojo, `allow_all` | 1.00 | 1.00 | n/a | 0.00 | n/a | n/a | n/a | n/a | n/a | n/a |
+| Tekmor AgentDojo, `tekmor` | 0.45 | 0.036 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Tekmor AgentDojo, `tekmor` + endorsement | 0.69 | 0.146 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Tekmor AgentDojo, `deny-gray` | 0.45 | 0.000 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 
-Tekmor uses the same research discipline on its own surfaces: fixed baselines, ablations, adaptive variants, external validation, and explicit negative results. Its internal suite is useful for regression and mechanism analysis; it is not treated as independent external evidence.
+Breakdown by domain and attack family:
 
-### Part VII — Benchmarks
+- Braum official: public split attacked 23 attacks, all 23 contained; validation showed no attack reached the agent even undefended, so it is not a meaningful containment test.
+- Tekmor internal suite: 26 scenarios across enterprise, financial, and security-operations domains, covering seven attack families at levels 1–5. The strongest internal configuration was `tekmor` + canary layer, with ASR 0.06 and zero false blocks.
+- Tekmor AgentDojo: the benchmark was run with a scripted ground-truth driver and therefore should be treated as a conservative upper-bound benchmark on attack success, not as a full real-agent measurement.
 
-#### Official Braum evaluation
+## 7. Ablations
 
-The latest documented Qwen3-8B run contains all 23 attacks that reached the undefended agent on the public split. The official score and full run details remain in [TECHNICAL_REPORT](TECHNICAL_REPORT.md), [OFFICIAL_HARNESS](OFFICIAL_HARNESS.md), and `artifacts/qwen3/`.
+- Braum and Tekmor both identify provenance as the core measurable contributor.
+- In Tekmor's internal suite, removing provenance raised ASR from 0.06 to 0.94; removing taint propagation raised ASR to 0.39.
+- The `deny-sensitive` baseline is a trivial lower bound: it reaches near-zero ASR but completes only 12% of benign work and false-blocks 24% of benign actions.
+- In Tekmor's AgentDojo runs, `endorsement` recovered much of the utility loss (0.45 to 0.69) while paying a security trade (ASR 0.036 to 0.146). This is a direct indication that the model's performance is sensitive to how much authority is permitted to untrusted content.
+- The activation-drift probe in Tekmor did not meet its gate: it had 0.99 AUROC on synthetic validation but only 0.65 AUROC and 0.91 false positives on held-out AgentDojo traces. The signal was therefore demoted and not used in the production path.
 
-#### Tekmor internal suite
+## 8. Failure analysis
 
-Tekmor evaluates 26 scenarios across enterprise, financial, and security-operations domains, covering seven attack families at difficulty levels 1–5, including eight benign hard negatives.
+Concrete failure categories observed in Braum and Tekmor:
 
-| Tekmor configuration | Benign utility | Attack success | Secret leaks | False blocks |
-|---|---:|---:|---:|---:|
-| `allow-all` | 1.00 | 1.00 | 0.42 | 0.00 |
-| `deny-sensitive` | 0.12 | 0.00 | 0.00 | 0.24 |
-| `keyword` | 0.62 | 0.89 | 0.27 | 0.11 |
-| `tekmor` | 1.00 | 0.11 | 0.08 | 0.00 |
-| `tekmor` + canary layer | 1.00 | **0.06** | **0.04** | 0.00 |
+1. Missed attacks and adaptation: a reworded or encoded payload can bypass a detector-style baseline. The keyword filter in Tekmor fell from 0.88 to 1.00 within five rounds under an adaptive attacker.
+2. Over-tainting: call-level taint in Tekmor reduced utility on AgentDojo to 0.45; it was too conservative and left little room for benign work. The `endorsement` primitive partially recovered this trade.
+3. Ambiguous gray-zone actions: the gray-zone is exactly where reassurance from a model judge can become a refusal switch rather than evidence-based reasoning. Tekmor's `deny-gray` control reproduced the behavior of the GPU judges without adding real discrimination.
+4. Calibration and data gaps: Braum and Tekmor both track calibration and acknowledge that the model-driven Qwen3-8B path remains incomplete. In Tekmor, the calibration signal was measured but not treated as a replacement for policy-based decisions.
+5. Model-driven execution gap: Tekmor's model-driven AgentDojo attempt produced 0.00 utility even for `allow_all`, which shows that the tool-call contract and runtime driver must be made native before a realistic model-based benchmark can be trusted.
 
-#### Tekmor ablations and adaptive attacker
+## 9. Responsible AI and security considerations
 
-Removing provenance raised attack success from 0.06 to 0.94. Removing taint propagation raised it to 0.39. Over 50 hill-climbing rounds, the keyword filter reached 1.00 attack success within five rounds; `tekmor` remained at 0.06 and `tekmor` plus canary remained at 0.00.
+- What the defense protects against and its known failure modes.
+  - Protects against indirect prompt injection, malicious instructions hidden in documents, tool output tampering, and sensitive-data exfiltration when the route is visible to the monitor.
+  - Known failure modes include over-tainting of benign work, opaque identifiers that prevent provenance traceability, and edge cases where sensitive data is laundered through world-state handles or a model-driven driver does not emit a valid tool call.
+- Expected false-positive behavior and who bears its cost.
+  - The cost of false blocks is borne by the user agent's task completion. That is why Braum and Tekmor both report FBR side by side with ASR and BTU.
+- What data the defense observes and whether any user content is stored.
+  - The defense observes the task, the tool call, provenance, risk evidence, and traces. It does not need to store user secrets beyond the runtime trace and redacted evidence needed for debugging.
+- When humans should be consulted; how explanations and reason codes are generated.
+  - Escalation is used when a sensitive action is severe, ambiguous, or not safely rewritable. Reason codes arise directly from policy predicates and provenance edges, keeping explanations faithful to the decision rather than post-hoc.
+- Performance differences across domains.
+  - The official Braum challenge shows the strongest performance in the reference public split, while Tekmor's internal work highlights the cost of conservative policy under external workloads and its smaller internal suite. Domain-specific policy still matters.
 
-These are internal research measurements using a scripted agent. One encoded canary case exposed a scanner/ground-truth blind spot, so the flat adaptive curve is not presented as proof of universal robustness.
+## 10. Reproducibility
 
-#### Tekmor AgentDojo validation
+- Repository commit or release tag.
+  - This report should be checked against the repository state at the commit used to generate the official scorecard and run artifacts.
+- Exact commands to build, run, and self-test.
 
-Tekmor evaluated AgentDojo v1.2.2 across banking, Slack, travel, and workspace: 97 benign runs and 583 attack pairs. The core configuration achieved 0.45 benign utility and 0.036 attack success; `deny-sensitive` achieved 0.41 and 0.036. Endorsement raised utility to 0.69 but also raised attack success to 0.146. Argument provenance reached 0.55 utility and 0.072 attack success; field labels reached 0.55 and 0.038 in the measured arm.
+```bash
+pip install pyyaml
+python3 run_tests.py
 
-Every AgentDojo number came from a scripted ground-truth agent. Attack success is therefore an always-obeys upper bound, and benign utility measures whether the policy permits the oracle trace. A Qwen3-8B model-driven attempt scored 0.00 utility even for `allow-all`, so it produced no valid comparative benchmark.
+./bin/sentinel replay artifacts/qwen3/run4-2026-09-21/traces/<pass>/<run>.jsonl
+./bin/sentinel dashboard && xdg-open observability/dashboard.html
 
-Full Tekmor tables and caveats are in [results](../experiments/Tekmor/docs/07-results.md), [methodology](../experiments/Tekmor/docs/06-evaluation-methodology.md), and [limitations](../experiments/Tekmor/docs/08-limitations.md).
+# Tekmor benchmark examples
+uv sync --all-extras
+uv run pytest
+uv run python -m evaluation.harness
+uv run python -m evaluation.ablations
+uv run python -m evaluation.adaptive
+uv run python -m evaluation.dojo
+```
 
-### Part VIII — Explainability
+- Declared external models and datasets, with licenses.
+  - Official Braum evaluation uses the reference agent `Qwen/Qwen3-8B` in the indabaX challenge harness.
+  - Tekmor's AgentDojo validation uses AgentDojo v1.2.2 and its own benchmark tasks and settings.
+- Deterministic digests of any scorecards you report.
+  - Use the challenge and benchmark scorecards, hashes, and artifacts stored in the repo so that every reported result can be traced back to a run.
 
-The defense emits reason codes and structured evidence from the same signals used for the decision. This keeps explanations faithful to policy predicates rather than relying on post-hoc model rationales. Fine-grained traces remain separate from public adaptive-attacker feedback.
-
-### Part IX — Mechanistic Interpretability (honest feasibility)
-
-Tekmor tested an activation-delta drift probe as an optional research extension. It reached 0.99 AUROC on synthetic validation, but only 0.65 AUROC with a 0.91 false-positive rate on held-out AgentDojo traces at 8B. It flagged 88 of 97 clean runs and was demoted to future work. Braum does not depend on this probabilistic signal.
-
-### Part X — Research Gaps
-
-Known gaps include argument-level residual influence, opaque identifiers, secrets laundered through world state, read-as-attack scenarios, external validation of confidentiality flow, adaptive robustness against capable model-driven agents, and calibrated risk scores with enough independent data.
-
-### Part XI — Candidate Solutions
-
-The adopted operational solution is a deterministic provenance and policy monitor with capability-aware rewriting, information-flow checks, structured traces, and an execution boundary. Tekmor also evaluated endorsement, argument provenance, field labels, an alignment auditor, and an activation probe. These remain experimental unless a documented comparison supports adoption.
-
-### Part XII — Recommended Directions (tradeoffs)
-
-The stable core should remain deterministic and auditable. Utility improvements should prefer least-privilege rewrites and explicitly scoped endorsement over silently trusting observed content. Probabilistic judges or activation sensors may supplement the core, but must never be the sole security gate.
-
-### Part XIII — Implementation Roadmap
-
-The implementation sequence is: preserve Braum as the default path; maintain Tekmor as an explicit experimental path; align terminology and component mappings; add comparison tooling; then run regression, official, and external benchmarks with fixed configurations and recorded limitations.
-
-### Part XIV — Demonstration Strategy
-
-The primary demonstrations are a benign task that completes, a poisoned invoice that is blocked or rewritten, a multi-step provenance attack, a memory-poisoning attempt, and an adaptive round. Each should show the trace and the decision reason, including one honest failure boundary.
-
-### Part XV — Technical Write-up Structure
-
-The report follows the same research progression as Tekmor: problem and threat model, related work, architecture, security model, provenance, policy, observability, implementation, evaluation, benchmarks, ablations, failure analysis, limitations, and reproducibility.
-
-## What We Should Actually Build — Three Concrete Architecture Proposals
-
-1. **Deterministic information-flow reference monitor:** the reliable core for production and submission.
-2. **Core plus task-alignment auditor:** an optional gray-zone experiment, judged against a refuse-everything control.
-3. **Core plus activation-delta drift probe:** a future interpretability experiment that can raise suspicion but cannot weaken deterministic policy decisions.
-
-## Recommendations
-
-1. Keep Braum as the default production and submission path.
-2. Keep Tekmor results separate, reproducible, and clearly labeled as research evidence.
-3. Use official evaluation for deployment claims and AgentDojo only with its scripted-agent limitation attached.
-4. Preserve negative results, ablations, and failure cases alongside headline scores.
-5. Record implementation, model, benchmark, split, attacker, seed, policy, metrics, commands, and known failures for every future run.
-
-## Caveats
-
-- Tekmor's internal scenarios were written by the same project that wrote the defense; they are useful for ablations and regression, not external validity.
-- AgentDojo results are based on a scripted ground-truth agent, not a successful model-driven run.
-- The activation probe failed its pre-registered false-positive gate and is not part of the Braum security boundary.
-- A benchmark-derived fix must not be presented as independent validation on that same benchmark.
-- This report uses **Braum** as the project name while retaining the current repository name until a separate repository-renaming decision is made.
+This report treats Braum as the primary submission path and Tekmor as the explicit research baseline and comparison layer. The official benchmark evidence remains the highest-confidence deployment claim; the Tekmor figures are retained as independent evidence about architectural trade-offs and the value of provenance and policy enforcement.
