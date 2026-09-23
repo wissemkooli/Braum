@@ -3,6 +3,14 @@
 *IndabaX Tunisia 2026 · research challenge submission · defense solution +
 observability layer · fully offline, synthetic data only*
 
+## Project context
+
+**Braum** is the project character and mascot.
+
+![Braum](https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Braum_0.jpg)
+
+**Tekmor** is preserved under `experiments/Tekmor/` as the research and experimental track that informs SENTINEL's architecture.
+
 An agent that reads untrusted text cannot be told to ignore it — reading is the
 job. So this defense does not ask *"does this text look malicious?"*. It asks:
 
